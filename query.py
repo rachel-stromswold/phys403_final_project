@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from astroquery.sdss import SDSS
-import pesummary.io
+#import pesummary.io
 
 gal_list_fname = 'GW_Events/GW200202_gals.txt'
 

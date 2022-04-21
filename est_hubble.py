@@ -3,6 +3,8 @@ import numpy as np
 import math
 from scipy import integrate
 
+#np.seterr(all='raise')
+
 C_L = 2.99792458e5      # km / s (speed of light in vacuum)
 C_L_SQ = C_L*C_L        # km^2 s^-2 (speed of light squared)
 PRIOR_RANGE = (20, 140) # km s^-1 Mpc^-1 (range of prior distribution for Hubble's constant)
@@ -36,14 +38,21 @@ def integrand(z_i, z_mu, z_err_sq, h_0):
     return marg_gw*marg_em
 
 #posterier from Nair et al
-for gal in galaxies[:2]:
+for gal in galaxies:
     mu_z = gal[2]
-    sig_z = gal[3]*gal[3] #error on the redshift of galaxy i
+    sig_z = gal[3] #error on the redshift of galaxy i
+    var_z = gal[3]*gal[3] #error on the redshift of galaxy i
 
-    #iterate over the hubble constant prior
-    for i, h in enumerate(h_vals):
-        #integrate over possible redshifts
-        pdf[i] += integrate.quad(integrand, gal[2]-N_REDSHIFT_SIGS*gal[3], gal[2]+N_REDSHIFT_SIGS*gal[3], args=(mu_z, sig_z, h,))[0]
+    #some galaxies have zero catalogued redshift and error, we ignore these to avoid divisions by zero
+    if var_z > 0:
+        #iterate over the hubble constant prior
+        for i, h in enumerate(h_vals):
+            #integrate over possible redshifts
+            pdf[i] += integrate.quad(integrand, gal[2]-N_REDSHIFT_SIGS*gal[3], gal[2]+N_REDSHIFT_SIGS*gal[3], args=(mu_z, var_z, h,))[0]/sig_z
 
 plt.plot(h_vals, pdf)
+plt.xlabel(r'$H_0$ km s$^{-1}$ Mpc$^{-1}$')
+plt.ylabel(r'$p(H_0 | D)$')
+plt.title(r'Posterior distribution for $H_0$')
 plt.show()
+#plt.savefig('hub.svg')
