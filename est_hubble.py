@@ -9,6 +9,9 @@ C_L = 2.99792458e5      # km / s (speed of light in vacuum)
 C_L_SQ = C_L*C_L        # km^2 s^-2 (speed of light squared)
 PRIOR_RANGE = (20, 140) # km s^-1 Mpc^-1 (range of prior distribution for Hubble's constant)
 
+OMEGA_M = 0.3           #unitless
+OMEGA_A = 0.7
+
 #these hardcoded events come from GW200202
 #TODO: read these from the hdf5 file automatically
 DIST_GW_MU = 410        # Mpc
@@ -33,9 +36,16 @@ def integrand(z_i, z_mu, z_err_sq, h_0):
     sig_cz_sq: the square error of c*z_i
     h_0: Hubble's constant
     '''
-    marg_gw = math.exp( (h_0*DIST_GW_MU - C_L*z_i)*(C_L*z_i - h_0*DIST_GW_MU) / (2*DIST_GW_VR*h_0*h_0) )
+    #we need to marginalize over dzi and solid angles (see Soares-Santos et al)
+    c_z = C_L*z_i
+    try:
+        dV = c_z*c_z / (h_0*h_0*h_0*math.sqrt(OMEGA_M*(1+z_i)**3 + OMEGA_A))
+    except ValueError:
+        dV = 1
+    #compute marginal posteriors on the GW data and EM data
+    marg_gw = math.exp( (h_0*DIST_GW_MU - c_z)*(c_z - h_0*DIST_GW_MU) / (2*DIST_GW_VR*h_0*h_0) )
     marg_em = math.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
-    return marg_gw*marg_em
+    return marg_gw*marg_em*dV
 
 #posterier from Nair et al
 for gal in galaxies:
