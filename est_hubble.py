@@ -40,10 +40,10 @@ def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
     '''
     #we need to marginalize over dzi and solid angles (see Soares-Santos et al)
     c_z = C_L*z_i
-    '''try:
+    try:
         dV = c_z*c_z / (h_0*h_0*h_0*math.sqrt(OMEGA_M*(1+z_i)**3 + OMEGA_A))
     except ValueError:
-        dV = 1'''
+        dV = 1
     dV = 1
     #compute marginal posteriors on the GW data and EM data
     marg_gw = math.exp( (h_0*gw_dist_mu - c_z)*(c_z - h_0*gw_dist_mu) / (2*gw_dist_var*h_0*h_0) )
@@ -65,6 +65,7 @@ for ev in EVENT_LIST:
     #posterier from Nair et al
     rshifts = galaxies['redshifts']
     for mu_z, sig_z in zip(rshifts['z'], rshifts['z_err']):
+        print(mu_z, sig_z)
         var_z = sig_z*sig_z #error on the redshift of galaxy i
 
         #some galaxies have zero catalogued redshift and error, we ignore these to avoid divisions by zero
