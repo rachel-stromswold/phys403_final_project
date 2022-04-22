@@ -28,8 +28,10 @@ N_SURVEY_ROWS = 1000000 # SDSS contains a lot of data (most of which we don't ne
 envs = find_datasets(type="event", match="GW")
 
 #TODO: I'm not sure which waveform template is best for GW200115, we'll need to look into that further or ommit it
-EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
-WVFRM_LIST = ['C01:IMRPhenomXPHM', 'C01:IMRPhenomNSBH:HighSpin', 'C01:IMRPhenomXPHM', 'C01:SEOBNRv4PHM']
+#EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
+#WVFRM_LIST = ['C01:IMRPhenomXPHM', 'C01:IMRPhenomNSBH:HighSpin', 'C01:IMRPhenomXPHM', 'C01:SEOBNRv4PHM']
+EVENT_LIST = ['GW200202_154313-v1']
+WVFRM_LIST = ['C01:IMRPhenomXPHM']
 
 #we apply a random shift factor to the redshifts to blind our analysis
 blind_fact = random.uniform(0.8, 1.2)
@@ -121,6 +123,6 @@ for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
                     match_gals[1].append(row['e_zsp'])
             rshift_grp = f.create_group('redshifts')
             rshift_grp['z'] = np.array(match_gals[0])
-            rshift_grp['z_err'] = np.array(match_gals[0])
+            rshift_grp['z_err'] = np.array(match_gals[1])
 
         print("finished saving" + rshift_fname)
