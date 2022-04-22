@@ -65,7 +65,6 @@ for ev in EVENT_LIST:
     #posterier from Nair et al
     rshifts = galaxies['redshifts']
     for mu_z, sig_z in zip(rshifts['z'], rshifts['z_err']):
-        print(mu_z, sig_z)
         var_z = sig_z*sig_z #error on the redshift of galaxy i
 
         #some galaxies have zero catalogued redshift and error, we ignore these to avoid divisions by zero

@@ -5,7 +5,7 @@ from ligo.skymap import postprocess
 import pesummary.io
 from pesummary.gw.fetch import fetch_open_samples
 from gwosc.datasets import find_datasets
-from mocpy import MOC
+import mocpy
 
 from astropy import units as u
 from astroquery.xmatch import XMatch
@@ -90,16 +90,41 @@ for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
         #find the skymap from the GW data
         skymap = data.skymap[wf]
         uniq = np.array([i for i in range(len(skymap))])
-        ligo_sky = MOC.from_valued_healpix_cells(uniq, skymap, cumul_to=SKYLOC_CONF_LEVEL)
+        ligo_sky = mocpy.MOC.from_valued_healpix_cells(uniq, skymap, cumul_to=SKYLOC_CONF_LEVEL)
 
         #read from the vizier SDSS galaxy catalog
         print("Now finding galaxies in confidence interval for " + ev + ". This could take a while.")
-        sdss_match = ligo_sky.query_vizier_table('V/147/sdss12', max_rows=N_SURVEY_ROWS)
+
+        #lookup the info from the table
+        from io import BytesIO
+        from astropy.io.votable import parse_single_table
+        import requests
 
         #now we need to convert our distance cut for the event into a redshift cut using extreme values (z= d_L*H_0/c e.g. the max value z may take is d_L,max*H_0,max/c)
         dist_ex, dist_var, dist_lo, dist_hi = get_conf_interval(data.samples_dict[wf]["luminosity_distance"])
         z_lo = dist_lo*PRIOR_RANGE[0] / C_L
         z_hi = dist_hi*PRIOR_RANGE[1] / C_L
+
+        moc_file = BytesIO()
+        moc_fits = ligo_sky.serialize(format='fits')
+        moc_fits.writeto(moc_file)
+
+        r = requests.post('http://cdsxmatch.u-strasbg.fr/QueryCat/QueryCat',
+                          data={'mode': 'mocfile',
+                                'catName': 'V/147/sdss12',
+                                'format': 'votable',
+                                'limit': N_SURVEY_ROWS,
+                                'filter': 'class==3 && (zsp>{} && zsp<{})'.format(z_lo, z_hi)},
+                          files={'moc': moc_file.getvalue()},
+                          headers={'User-Agent': 'MOCPy'},
+                          stream=True)
+
+        votable = BytesIO()
+        votable.write(r.content)
+
+        sdss_match = parse_single_table(votable).to_table()
+        print("found {} matching galaxies for the {} confidence interval".format(len(sdss_match), SKYLOC_CONF_LEVEL))
+        #sdss_match = ligo_sky.query_vizier_table('V/147/sdss12', max_rows=N_SURVEY_ROWS)
 
         #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
         print("saving to file")
@@ -125,4 +150,4 @@ for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
             rshift_grp['z'] = np.array(match_gals[0])
             rshift_grp['z_err'] = np.array(match_gals[1])
 
-        print("finished saving" + rshift_fname)
+        print("finished saving to " + rshift_fname)
