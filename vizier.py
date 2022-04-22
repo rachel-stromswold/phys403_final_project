@@ -12,11 +12,15 @@ from astroquery.xmatch import XMatch
 
 import os
 import numpy as np
+from datetime import datetime
+import random
 
-#
+#constants that we'll need
+C_L = 2.99792458e5      # km / s (speed of light in vacuum)
 PRIOR_RANGE = (20, 140) # km s^-1 Mpc^-1 (range of prior distribution for Hubble's constant)
-
-CONF_LEVEL = 0.4
+DIST_CONF_LEVEL = 0.9
+SKYLOC_CONF_LEVEL = 0.9
+N_SURVEY_ROWS = 1000000 # SDSS contains a lot of data (most of which we don't need)
 
 envs = find_datasets(type="event", match="GW")
 
@@ -24,6 +28,11 @@ envs = find_datasets(type="event", match="GW")
 EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
 WVFRM_LIST = ['C01:IMRPhenomXPHM', 'C01:IMRPhenomNSBH:HighSpin', 'C01:IMRPhenomXPHM', 'C01:SEOBNRv4PHM']
 
+#we apply a random shift factor to the redshifts to blind our analysis
+blind_fact = random.uniform(1.0, 5.0)
+#we need to be able to unshift the data after we're done and repeat our analysis. No peeking!
+with open("secret.txt", 'a') as file:
+    file.write("Scaling factor for events {} (Generated at {}): {}".format(EVENT_LIST, datetime.now(), blind_fact))
 
 #fetch a list of events which are saved locally
 saved_events = os.listdir('GW_Events')
@@ -39,6 +48,28 @@ def search_local(name):
     #if we reach this point in execution, no matching file was found
     return ''
 
+def get_conf_interval(samples, conf_level=0.9):
+    '''From an array-like of posterior samples, produce the central confidence interval
+    samples: posterior samples from which we generate interval
+    conf_level: desired confidence level
+    returns: a tuple mean, variance and upper and lower bounds for the confidence interval
+    '''
+    arr = np.sort(np.asarray(samples))
+    n_samps = arr.size
+    ex = 0.0
+    var = 0.0
+    #find the expectation value
+    for x in arr:
+        ex += x / n_samps
+    #find the variance
+    for x in arr:
+        var += (x-ex)**2 / (n_samps-1)
+
+    #find the index of the upper and lower limits
+    low_i = int( n_samps*(1.0 - conf_level)/2 )
+    up_i =  int( n_samps*(0.5 + conf_level/2) )
+    return ex, var, arr[low_i], arr[up_i]
+
 for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
     #check if we have the fits file for the event, create it if we don't
     ev_fname = search_local(ev)
@@ -50,24 +81,29 @@ for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
     else:
         data = pesummary.io.read('GW_Events/' + ev_fname)
     
+    #find the skymap from the GW data
     skymap = data.skymap[wf]
-    #cls = postprocess.find_greedy_credible_levels(skymap)
-    #load the LIGO data skymap and crossmatch with the glade catalog
     uniq = np.array([i for i in range(len(skymap))])
-    ligo_sky = MOC.from_valued_healpix_cells(uniq, skymap, cumul_to=CONF_LEVEL)
+    ligo_sky = MOC.from_valued_healpix_cells(uniq, skymap, cumul_to=SKYLOC_CONF_LEVEL)
 
     #read from the vizier SDSS galaxy catalog
     print("Now finding galaxies in confidence interval")
-    sdss_match = ligo_sky.query_vizier_table('V/147/sdss12', max_rows=100000)
+    sdss_match = ligo_sky.query_vizier_table('V/147/sdss12', max_rows=N_SURVEY_ROWS)
+
+    #now we need to convert our distance cut for the event into a redshift cut using extreme values (z= d_L*H_0/c e.g. the max value z may take is d_L,max*H_0,max/c)
+    dist_ex, dist_var, dist_lo, dist_hi = get_conf_interval(data.samples_dict[wf]["luminosity_distance"])
+    z_lo = dist_lo*PRIOR_RANGE[0] / C_L
+    z_hi = dist_hi*PRIOR_RANGE[1] / C_L
 
     #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
     with open('GW_Events/' + ev + '.txt', 'w') as file:
+        #write the distances
+        file.write("#GW_dist, GW_dist_var, lo_bound, up_bound")
+        file.write("{} {} {} {}".format(dist_ex*blind_fact, dist_var*blind_fact, dist_lo*blind_fact, dist_hi*blind_fact))
         file.write("#ra dec z zErr\n")
-        for row in res:
-            file.write( "{} {} {} {}\n".format(row['ra'], row['dec'], row['z']*blind_fact, row['zErr']*blind_fact) )
+        for row in sdss_match:
+            #check that the object is actually a galaxy (type 3) and that it is in the 90% distance range
+            if row['class'] == 3 and row['z'] > z_lo and row['z'] < z_hi:
+                file.write( "{} {} {} {}\n".format(row['ra'], row['dec'], row['z'], row['zErr']) )
 
-    #we need to be able to unshift the data after we're done and repeat our analysis. No peeking!
-    with open("secret.txt", 'a') as file:
-        file.write("Scaling factor for {} (Generated at {}): {}".format(gal_list_fname, datetime.now(), blind_fact))
-
-    print("finished saving to file")
+print("finished saving to file")
