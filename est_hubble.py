@@ -22,7 +22,8 @@ DIST_GW_VR = 150        # Mpc (variance of the GW observation
 N_REDSHIFT_SIGS = 2
 
 #EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
-EVENT_LIST = ['GW200202_154313-v1']
+SAMPLE_TYPE = 'sim_events'
+EVENT_LIST = ['ev_1']
 
 #prior range on the hubble constant
 h_vals = np.linspace(PRIOR_RANGE[0], PRIOR_RANGE[1])
@@ -52,18 +53,19 @@ def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
 
 for ev in EVENT_LIST:
     #load the list of potential galaxies
-    rshift_fname = 'GW_Events/' + ev + '_rshifts.h5'
+    rshift_fname = SAMPLE_TYPE + '/' + ev + '_rshifts.h5'
     galaxies = h5py.File(rshift_fname, 'r')
 
     #figure out the range for our z-cut
-    ev_d_range = galaxies['distance_posterior']['GW_distance']['conf_interval']
+    ev_d_range = galaxies['distance_posterior']['conf_interval']
     z_min = ev_d_range[0]*PRIOR_RANGE[0] / C_L
     z_max = ev_d_range[1]*PRIOR_RANGE[1] / C_L
 
-    gw_dist_mu = galaxies['distance_posterior']['GW_distance']['expectation'][0]
-    gw_dist_var = (galaxies['distance_posterior']['GW_distance']['std_error'][0])**2
+    gw_dist_mu = galaxies['distance_posterior']['expectation'][0]
+    gw_dist_var = (galaxies['distance_posterior']['std_error'][0])**2
     #posterier from Nair et al
     rshifts = galaxies['redshifts']
+    print("Found %d matching galaxies" % len(rshifts['z']))
     for mu_z, sig_z in zip(rshifts['z'], rshifts['z_err']):
         var_z = sig_z*sig_z #error on the redshift of galaxy i
 

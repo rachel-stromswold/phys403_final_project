@@ -18,6 +18,11 @@ from datetime import datetime
 import random
 import math
 
+#TODO: I'm not sure which waveform template is best for GW200115, we'll need to look into that further or ommit it
+EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
+WVFRM_LIST = ['C01:IMRPhenomXPHM', 'C01:IMRPhenomNSBH:HighSpin', 'C01:IMRPhenomXPHM', 'C01:SEOBNRv4PHM']
+DIR_NAME = 'GW_events'
+
 #constants that we'll need
 C_L = 2.99792458e5      # km / s (speed of light in vacuum)
 PRIOR_RANGE = (20, 140) # km s^-1 Mpc^-1 (range of prior distribution for Hubble's constant)
@@ -27,12 +32,6 @@ N_SURVEY_ROWS = 1000000 # SDSS contains a lot of data (most of which we don't ne
 
 envs = find_datasets(type="event", match="GW")
 
-#TODO: I'm not sure which waveform template is best for GW200115, we'll need to look into that further or ommit it
-#EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
-#WVFRM_LIST = ['C01:IMRPhenomXPHM', 'C01:IMRPhenomNSBH:HighSpin', 'C01:IMRPhenomXPHM', 'C01:SEOBNRv4PHM']
-EVENT_LIST = ['GW200202_154313-v1']
-WVFRM_LIST = ['C01:IMRPhenomXPHM']
-
 #we apply a random shift factor to the redshifts to blind our analysis
 blind_fact = random.uniform(0.8, 1.2)
 #we need to be able to unshift the data after we're done and repeat our analysis. No peeking!
@@ -40,7 +39,7 @@ with open("secret.txt", 'a') as file:
     file.write("Scaling factor for events {} (Generated at {}): {}".format(EVENT_LIST, datetime.now(), blind_fact))
 
 #fetch a list of events which are saved locally
-saved_events = os.listdir('GW_Events')
+saved_events = os.listdir(DIR_NAME)
 
 def search_local(name):
     '''Check to see if the event specified by name has a matching .h5 file which is saved locally so that we don't need to download it again.
@@ -76,7 +75,7 @@ def get_conf_interval(samples, conf_level=0.9):
     return ex, var, arr[low_i], arr[up_i]
 
 for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
-    rshift_fname = 'GW_Events/' + ev + '_rshifts.h5'
+    rshift_fname = DIR_NAME + '/' + ev + '_rshifts.h5'
     if not os.path.exists(rshift_fname):
         #check if we have the fits file for the event, create it if we don't
         ev_fname = search_local(ev)
@@ -85,7 +84,7 @@ for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
             #download the GW data, this is in an unhelpful format so we save it to a temporary directory and then convert it
             data = fetch_open_samples(ev, read_file=True, outdir='/tmp')
         else:
-            data = pesummary.io.read('GW_Events/' + ev_fname)
+            data = pesummary.io.read(DIR_NAME + ev_fname)
         
         #find the skymap from the GW data
         skymap = data.skymap[wf]
@@ -131,12 +130,11 @@ for ev, wf in zip(EVENT_LIST, WVFRM_LIST):
         with h5py.File(rshift_fname, 'w') as f:
             #write the distance information
             dist_post = f.create_group("distance_posterior")
-            dist_dset = dist_post.create_group("GW_distance")
-            dset1 = dist_dset.create_dataset("expectation", (1,), dtype='f')
+            dset1 = dist_post.create_dataset("expectation", (1,), dtype='f')
             dset1[0] = dist_ex*blind_fact
-            dset2 = dist_dset.create_dataset("std_error", (1,), dtype='f')
+            dset2 = dist_post.create_dataset("std_error", (1,), dtype='f')
             dset2[0] = math.sqrt(dist_var)*blind_fact
-            dset3 = dist_dset.create_dataset("conf_interval", (2,), dtype='f')
+            dset3 = dist_post.create_dataset("conf_interval", (2,), dtype='f')
             dset3[0] = dist_lo*blind_fact
             dset3[1] = dist_hi*blind_fact
             #write the redshifts for matching galaxies
