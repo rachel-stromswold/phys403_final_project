@@ -4,30 +4,31 @@ from datetime import datetime
 import numpy as np
 import h5py
 
+import argparse
+import configparser
+
 DIR_NAME = 'sim_events'
 
-H0_TRUE = 70 #km s^-1 Mpc^-1, true value of Hubble's constant used for simulations
-C_L = 2.99792458e5   #km s^-1 speed of light in vacuum
+config = configparser.ConfigParser()
+config.read('params.conf')
+H0_TRUE = float(config['simulation']['H_0_true'])
+C_L = float(config['physical']['light_speed'])
+GAL_DENSITY = float(config['physical']['galaxy_density'])
+GW_LOC_RANGE = [float(val) for val in config['simulation']['GW_dist_range'].split(sep=',')]
+GW_DERR_SIG = float(config['simulation']['GW_dist_err_sig'])
+SKY_ANGLE_RANGE = [int(val) for val in config['simulation']['skyloc_range'].split(sep=',')]
+MIN_GAL_DIST = float(config['simulation']['min_gal_dist'])
+VEL_DISP_MEAN = float(config['physical']['vel_disp_ex'])
+VEL_DISP_ERR = float(config['physical']['vel_disp_er'])
+Z_MEAS_ERR = float(config['simulation']['z_er'])
+if len(GW_LOC_RANGE) != 2 or len(SKY_ANGLE_RANGE) != 2:
+    raise ValueError("Ranges must have two elements.")
 
-#GAL_DENSITY = 5e-6 #Mpc^-3 Estimate of the number of galaxies per unit volume TODO: this number is VERY sketchy, try to find something more realistic
-GAL_DENSITY = 5e-8
-#GW_LOC_RANGE = (300, 5000) #Mpc range that the simulated true value may take
-GW_LOC_RANGE = (300, 1000)
-GW_SIG_SIG = 50
-SKY_ANGLE_RANGE = (30, 60)
-
-#taken from Girardi et al. Assuming we are working in one cluster, velocity dispersion will be roughly Gaussian with sigma_rob. Each galaxy in turn has a (roughly) Gaussian distributed peculiar velocity parameterized by the randomly sampled sigma_rob.
-SIGMA_ROB_MEAN = 786
-SIGMA_ROB_SIG = 261
-Z_MEAS_ERR = 0.1
-
-#we artificially restrict galaxies less than this distance away from the Earth
-MIN_GAL_DIST = 50
-
-#apply a data shift
-blind_fact = random.uniform(0.8, 1.2)
-with open("secret.txt", 'a') as file:
-    file.write("Scaling factor for simulated events (Generated at {}): {}".format(datetime.now(), blind_fact))
+#override configuration file with command line arguments if supplied
+parser = argparse.ArgumentParser(description='Query sky-surveys for redshift data corresponding to a gravitational-wave detection.')
+parser.add_argument('--density', type=str, nargs='+', help='Density of galaxies in cluster (Mpc^-3). Defaults to 5e-6.', default=GAL_DENSITY)
+args = parser.parse_args()
+GAL_DENSITY = args.density
 
 def soliddeg_to_solidrad(solid_deg):
     '''Convert solid angle given in degrees^2 to solid angle in radians^2
@@ -47,7 +48,7 @@ def gen_cluster(solid_angle, d_l, d_l_err):
     #comoving velocity dispersion for this particular cluster. We want to make sure this is positive, although negative values have roughly 0.3% chance to occur
     vel_sigma = -1.0
     while vel_sigma < 0:
-        vel_sigma = random.gauss(SIGMA_ROB_MEAN, SIGMA_ROB_SIG)
+        vel_sigma = random.gauss(VEL_DISP_MEAN, VEL_DISP_ERR)
 
     #approximate a poisson distribution with a Poisson distrubution mu=lambda sigma=sqrt(lambda)
     n_gals = int( random.gauss(lmbda, math.sqrt(lmbda)) )
@@ -76,7 +77,7 @@ def make_samples(n_events):
         rshift_fname = DIR_NAME + ( '/ev_{}_rshifts.h5'.format(i) )
         #just by eyeballing data from the GWTC-2 and GWTC-3 papers, Gaussian errors on distance are roughly one third the distance.
         dist = random.uniform(GW_LOC_RANGE[0], GW_LOC_RANGE[1])
-        dist_err = random.gauss(dist/3, GW_SIG_SIG)
+        dist_err = random.gauss(dist/3, GW_DERR_SIG)
         #take the 2*sigma confidence interval
         dist_lo = dist - dist_err*2
         dist_hi = dist + dist_err*2
@@ -91,12 +92,12 @@ def make_samples(n_events):
             #write the distance information
             dist_post = f.create_group("distance_posterior")
             dset1 = dist_post.create_dataset("expectation", (1,), dtype='f')
-            dset1[0] = dist*blind_fact
+            dset1[0] = dist#*blind_fact
             dset2 = dist_post.create_dataset("std_error", (1,), dtype='f')
-            dset2[0] = dist_err*blind_fact
+            dset2[0] = dist_err#*blind_fact
             dset3 = dist_post.create_dataset("conf_interval", (2,), dtype='f')
-            dset3[0] = dist_lo*blind_fact
-            dset3[1] = dist_hi*blind_fact
+            dset3[0] = dist_lo#*blind_fact
+            dset3[1] = dist_hi#*blind_fact
             #write the redshifts for matching galaxies
             rshift_grp = f.create_group('redshifts')
             rshift_grp['z'] = np.array(locs[2])

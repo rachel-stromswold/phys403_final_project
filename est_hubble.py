@@ -4,30 +4,24 @@ import math
 from scipy import integrate
 import h5py
 
+import configparser
+
 #np.seterr(all='raise')
 
-C_L = 2.99792458e5      # km / s (speed of light in vacuum)
-C_L_SQ = C_L*C_L        # km^2 s^-2 (speed of light squared)
-PRIOR_RANGE = (20, 140) # km s^-1 Mpc^-1 (range of prior distribution for Hubble's constant)
-
-OMEGA_M = 0.3           #unitless
-OMEGA_A = 0.7
-
-#these hardcoded events come from GW200202
-#TODO: read these from the hdf5 file automatically
-DIST_GW_MU = 410        # Mpc
-DIST_GW_VR = 150        # Mpc (variance of the GW observation
-
-#we need to integrate over potential redshifts for each galaxy. To make this feasible we'll limit the range to some multiple of the standard deviation
-N_REDSHIFT_SIGS = 2
-
-#EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
-SAMPLE_TYPE = 'sim_events'
-EVENT_LIST = ['ev_0', 'ev_1', 'ev_2']
-
-#prior range on the hubble constant
-'''h_vals = np.linspace(PRIOR_RANGE[0], PRIOR_RANGE[1])
-pdf = np.ones(len(h_vals))'''
+#read configuration
+config = configparser.ConfigParser()
+config.read('params.conf')
+PRIOR_RANGE = [float(val) for val in config['physical']['H_0_prior'].split(sep=',')]
+OMEGA_M = float(config['physical']['omega_matter'])
+OMEGA_A = float(config['physical']['omega_lambda'])
+C_L = float(config['physical']['light_speed'])
+C_L_SQ = C_L*C_L
+SAMPLE_TYPE = config['analysis']['type'].strip()
+EVENT_LIST = [val.strip() for val in config['analysis']['events'].split(sep=',')]
+if len(PRIOR_RANGE) != 2:
+    raise ValueError("Ranges must have two elements.")
+if len(EVENT_LIST) == 0:
+    raise ValueError("At least one event must be supplied.")
 
 def integrand_em(z_i, z_mu, z_err_sq, h_0):
     '''integrand for Bayes' theorem
