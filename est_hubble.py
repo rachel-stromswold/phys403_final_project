@@ -86,7 +86,7 @@ def p_part_gals(z, z_err, h_vals, z_min, z_max, gw_dist_mu, gw_dist_var):
     gw_dist_var: variance of GW distance
     returns: the probability distribution for H_0 considering only the current set of galaxies
     '''
-    tmp_pdf = np.zeros(len(h_vals))
+    part_pdf = np.zeros(len(h_vals))
     for mu_z, sig_z in zip(z, z_err): 
         var_z = sig_z*sig_z #error on the redshift of galaxy i
         #some galaxies have zero catalogued redshift and error, we ignore these to avoid divisions by zero
@@ -95,10 +95,9 @@ def p_part_gals(z, z_err, h_vals, z_min, z_max, gw_dist_mu, gw_dist_var):
             for i, h in enumerate(h_vals):
                 #integrate over possible redshifts
                 p_em = integrate.quad( integrand_em, z_min, z_max, args=(mu_z, var_z, h) )[0]
-                tmp_pdf[i] += tmp_pdf[i]*\
-                                integrate.quad( integrand, z_min, z_max, args=(mu_z, var_z, h, gw_dist_mu, gw_dist_var) )[0]\
-                                /(sig_z*p_em)
-    return tmp_pdf
+                p_gw = integrate.quad( integrand, z_min, z_max, args=(mu_z, var_z, h, gw_dist_mu, gw_dist_var) )[0]
+                part_pdf[i] += p_gw/(sig_z*p_em)
+    return part_pdf
 
 class Posterior_PDF:
     '''A utility class which stores a posterior pdf for a fixed vm and arbitrary distribution for H_0. The prior distribution for d is always assumed to be uniform.
