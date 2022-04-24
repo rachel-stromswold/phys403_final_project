@@ -6,6 +6,9 @@ import h5py
 
 import configparser
 
+#setup parallelization
+import multiprocessing as mp
+N_CORES = mp.cpu_count()
 #np.seterr(all='raise')
 
 #read configuration
@@ -65,6 +68,30 @@ def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
     marg_gw = math.exp( (h_0*gw_dist_mu - c_z)*(c_z - h_0*gw_dist_mu) / (2*gw_dist_var*h_0*h_0) )
     marg_em = math.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
     return marg_gw*marg_em*dV
+
+def p_part_gals(z, z_err, h_vals, z_min, z_max, gw_dist_mu, gw_dist_var):
+    '''Helper function which computes the sum of a list of galaxies with specified redshifts
+    z: iterable
+    z_err: iterable, must have the same length as z
+    h_vals: list of H_0 values from the prior distribution
+    z_min: lower bound for integration over z
+    z_max: upper bound for integration over z 
+    gw_dist_mu: expected value of GW distance
+    gw_dist_var: variance of GW distance
+    returns: the probability distribution for H_0 considering only the current set of galaxies
+    '''
+    part_pdf = np.zeros(len(h_vals))
+    for mu_z, sig_z in zip(z, z_err): 
+        var_z = sig_z*sig_z #error on the redshift of galaxy i
+        #some galaxies have zero catalogued redshift and error, we ignore these to avoid divisions by zero
+        if var_z > 0:
+            #iterate over the hubble constant prior
+            for i, h in enumerate(h_vals):
+                #integrate over possible redshifts
+                p_em = integrate.quad( integrand_em, z_min, z_max, args=(mu_z, var_z, h) )[0]
+                p_gw = integrate.quad( integrand, z_min, z_max, args=(mu_z, var_z, h, gw_dist_mu, gw_dist_var) )[0]
+                part_pdf[i] += p_gw/(sig_z*p_em)
+    return part_pdf
 
 class Posterior_PDF:
     '''A utility class which stores a posterior pdf for a fixed vm and arbitrary distribution for H_0. The prior distribution for d is always assumed to be uniform.
@@ -196,8 +223,6 @@ class Posterior_PDF:
         self.p_list /= int_p
 
     def add_event(self, rshift_fname):
-        #create a temporary pdf for this event. We need to take the product over multiple events to get the final result
-        tmp_pdf = np.zeros(len(self.p_list))
         galaxies = h5py.File(rshift_fname, 'r')
 
         #figure out the range for our z-cut
@@ -210,22 +235,32 @@ class Posterior_PDF:
 
         #posterier from Nair et al
         rshifts = galaxies['redshifts']
-        print("Found %d matching galaxies" % len(rshifts['z']))
-        for mu_z, sig_z in zip(rshifts['z'], rshifts['z_err']):
-            var_z = sig_z*sig_z #error on the redshift of galaxy i
 
-            #some galaxies have zero catalogued redshift and error, we ignore these to avoid divisions by zero
-            if var_z > 0:
-                #iterate over the hubble constant prior
-                for i, h in enumerate(self.h_list):
-                    #integrate over possible redshifts
-                    p_em = integrate.quad( integrand_em, z_min, z_max, args=(mu_z, var_z, h) )[0]
-                    tmp_pdf[i] += self.p_list[i]*\
-                            integrate.quad( integrand, z_min, z_max, args=(mu_z, var_z, h, gw_dist_mu, gw_dist_var) )[0]\
-                            /(sig_z*p_em)
+        #make sure that we have redshifts and errors for each galaxy
+        assert len(rshifts['z']) == len(rshifts['z_err'])
+        print("Found %d matching galaxies" % len(rshifts['z']))
+
+        #allocate different parts of the job to different cores
+
+        bsiz = len(rshifts['z']) // N_CORES
+        rem = len(rshifts['z']) % N_CORES
+
+        #we need to convert the two separate arrays for z and z_err into an array of arguments passed to p_one_gal.
+        # ;)
+        arg_list = [([z for z in rshifts['z'][i*(bsiz+1)+(rem-i)*((i-rem+N_CORES)//N_CORES):(i+1)*bsiz+i+1+(rem-i-1)*((i-rem+N_CORES)//N_CORES)]], [z for z in rshifts['z_err'][i*(bsiz+1)+(rem-i)*((i-rem+N_CORES)//N_CORES):(i+1)*bsiz+i+1+(rem-i-1)*((i-rem+N_CORES)//N_CORES)]], self.h_list, z_min, z_max, gw_dist_mu, gw_dist_var) for i in range(N_CORES)]
+
+        #create a temporary pdf for this event. We need to take the product over multiple events to get the final result
+        tmp_pdf = np.zeros(len(self.p_list))
+        pool = mp.Pool(processes=N_CORES)
+        res = pool.starmap(p_part_gals, arg_list)
+
+        #sum together each result from the pool
+        for r in res:
+            for i in range(len(tmp_pdf)):
+                tmp_pdf[i] += r[i]
 
         #move the new data into the pdf
-        self.p_list = tmp_pdf
+        self.p_list = tmp_pdf*self.p_list
 
 pdf = Posterior_PDF(PRIOR_RANGE)
 for ev in EVENT_LIST:

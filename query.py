@@ -12,23 +12,49 @@ from astroquery.xmatch import XMatch
 
 import h5py
 
+import argparse
 import os
 import numpy as np
 from datetime import datetime
 import random
 import math
 
-#TODO: I'm not sure which waveform template is best for GW200115, we'll need to look into that further or ommit it
-EVENT_LIST = ['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3']
-WVFRM_LIST = ['C01:IMRPhenomXPHM', 'C01:IMRPhenomNSBH:HighSpin', 'C01:IMRPhenomXPHM', 'C01:SEOBNRv4PHM']
 DIR_NAME = 'GW_events'
-
-#constants that we'll need
 C_L = 2.99792458e5      # km / s (speed of light in vacuum)
-PRIOR_RANGE = (20, 140) # km s^-1 Mpc^-1 (range of prior distribution for Hubble's constant)
-DIST_CONF_LEVEL = 0.9
-SKYLOC_CONF_LEVEL = 0.9
-N_SURVEY_ROWS = 1000000 # SDSS contains a lot of data (most of which we don't need)
+
+#parse commandline arguments
+parser = argparse.ArgumentParser(description='Query sky-surveys for redshift data corresponding to a gravitational-wave detection.')
+parser.add_argument('events', type=str, nargs='+',
+        help='Which GW events to fetch data for')
+        #default=['GW200202_154313-v1', 'GW200115_042309-v2', 'GW200208_222617-v1', 'GW190814_211039-v3'])
+#TODO: I'm not sure which waveform template is best for GW200115, we'll need to look into that further or ommit it
+parser.add_argument('waveforms', type=str, nargs='+',
+        help='Different posterior distributions are generated using different template waveforms.')
+        #default=['C01:IMRPhenomXPHM', 'C01:IMRPhenomNSBH:HighSpin', 'C01:IMRPhenomXPHM', 'C01:SEOBNRv4PHM'])
+parser.add_argument('--hub_prior_min', type=int, nargs='?',
+        help='The minimum bound for the prior on H_0 (km s^-1 Mpc^-1). Defaults to 20',
+        default=20)
+parser.add_argument('--hub_prior_max', type=int, nargs='?',
+        help='The minimum bound for the prior on H_0 (km s^-1 Mpc^-1). Defaults to 140.',
+        default=140)
+parser.add_argument('--dist_conf', type=float, nargs='?',
+        help='The desired confidence level for the distance estimate. Defaults to 0.9',
+        default=0.9)
+parser.add_argument('--sky_conf', type=float, nargs='?',
+        help='The desired confidence level for the sky location. Defaults to 0.9',
+        default=0.9)
+parser.add_argument('--max_entries', type=int, nargs='?',
+        help='the upper limit for the number of entries which may be returned from a survey. Defaults to 1000000',
+        default=1000000)
+args = parser.parse_args()
+EVENT_LIST = args.events
+WVFRM_LIST = args.waveforms
+PRIOR_RANGE = (args.hub_prior_min, args.hub_prior_max)
+DIST_CONF_LEVEL = args.dist_conf
+SKYLOC_CONF_LEVEL = args.sky_conf
+N_SURVEY_ROWS = args.max_entries
+
+print("Fetching data using\n\tevents={} waveforms={}\n\tH_0 in {}\n\td_l confidence={}\n\tsky confidence={}".format(EVENT_LIST, WVFRM_LIST, PRIOR_RANGE, DIST_CONF_LEVEL, SKYLOC_CONF_LEVEL))
 
 envs = find_datasets(type="event", match="GW")
 
