@@ -4,6 +4,7 @@ import math
 from scipy import integrate
 import h5py
 
+import argparse
 import configparser
 
 #setup parallelization
@@ -25,6 +26,12 @@ if len(PRIOR_RANGE) != 2:
     raise ValueError("Ranges must have two elements.")
 if len(EVENT_LIST) == 0:
     raise ValueError("At least one event must be supplied.")
+
+#override configuration file with command line arguments if supplied
+parser = argparse.ArgumentParser(description='Estimate the Hubble constant based on a GW event volume and a corresponding skymap.')
+parser.add_argument('--type', type=str, nargs='?', help='Type of events to sample. Accepcted values are GW_events for real events and sim_events for simulated events. Defaults to {}.'.format(SAMPLE_TYPE), default=SAMPLE_TYPE)
+args = parser.parse_args()
+SAMPLE_TYPE = args.type
 
 def integrand_em(z_i, z_mu, z_err_sq, h_0):
     '''integrand for Bayes' theorem
