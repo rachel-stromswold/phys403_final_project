@@ -268,6 +268,7 @@ class Posterior_PDF:
 
         #move the new data into the pdf
         self.p_list = tmp_pdf*self.p_list
+        galaxies.close()
 
 pdf = Posterior_PDF(PRIOR_RANGE)
 for ev in EVENT_LIST:

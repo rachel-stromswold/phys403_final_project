@@ -42,8 +42,13 @@ def gen_cluster(solid_angle, d_l, d_l_err):
     r_max = d_l+d_l_err
 
     #generate a cone around the azimuthal angle which has the appropriate solid angle and use this for our volume calculation
-    theta_r = math.acos( 1 - soliddeg_to_solidrad(solid_angle)/(2*math.pi) )
-    lmbda = GAL_DENSITY*solid_angle*( r_max**3 - r_min**3 ) / 3 #volume*number density
+    '''theta_r = math.acos( 1 - soliddeg_to_solidrad(solid_angle)/(2*math.pi) )
+    lmbda = GAL_DENSITY*solid_angle*( r_max**3 - r_min**3 ) / 3''' #volume*number density
+    #there are a few different ways we can partition up the space, but we'll give the declanation a range between -asin(sqrt(omega)/4) and asin(sqrt(omega)/4) and the right ascension a range between -sqrt(omega) and sqrt(omega)
+    sqrt_omega = math.sqrt( soliddeg_to_solidrad(solid_angle) )
+    theta_r = math.asin(sqrt_omega/4)
+    phi_r = sqrt_omega
+    lmbda = GAL_DENSITY*solid_angle*( r_max**3 - r_min**3 ) / 3
 
     #comoving velocity dispersion for this particular cluster. We want to make sure this is positive, although negative values have roughly 0.3% chance to occur
     vel_sigma = -1.0
@@ -52,22 +57,31 @@ def gen_cluster(solid_angle, d_l, d_l_err):
 
     #approximate a poisson distribution with a Poisson distrubution mu=lambda sigma=sqrt(lambda)
     n_gals = int( random.gauss(lmbda, math.sqrt(lmbda)) )
-    loc_arr = np.zeros(shape=(4, n_gals)) #colunms are (RA, DEC, z, z_err) respectively
+    loc_arr = np.zeros(shape=(5, n_gals)) #colunms are (RA, DEC, z, z_err) respectively
     print("Creating cluster with %d galaxies" % n_gals)
 
     #randomly generate locations for each galaxy
-    thetas = np.random.uniform(0.0, theta_r, n_gals)
-    phis = np.random.uniform(0.0, 2*math.pi, n_gals)
-    r_gals = np.random.uniform(r_min, r_max, n_gals)
+    '''thetas = np.random.uniform(0.0, theta_r, n_gals)
+    phis = np.random.uniform(0.0, 2*math.pi, n_gals)'''
+
+    #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
+    r_facts = np.random.uniform(0, 1.0, n_gals)
+    vol_per_angle = (r_max**3 - r_min**3)
+    r_gals = np.cbrt(r_facts*vol_per_angle + r_min**3)
+
     #generate the (radial components) of peculiar velocity for each galaxy
     pec_vels = np.random.normal(0.0, vel_sigma, n_gals)
     #calculate corresponding redshifts for each galaxy
     for i in range(n_gals):
         #calculate the velocity using Hubble's law + peculiar motion
         vel = H0_TRUE*r_gals[i] + pec_vels[i]
+        #store RA and DEC
+        loc_arr[0, i] = random.uniform(-phi_r, phi_r)
+        loc_arr[1, i] = random.uniform(-theta_r, theta_r)
+        loc_arr[2, i] = r_gals[i]
         #for radial motion z ~ v/c
-        loc_arr[2, i] = vel / C_L
-        loc_arr[3, i] = Z_MEAS_ERR
+        loc_arr[3, i] = vel / C_L
+        loc_arr[4, i] = Z_MEAS_ERR
         #TODO: add data for sky location
 
     return loc_arr
@@ -95,12 +109,17 @@ def make_samples(n_events):
             dset1[0] = dist#*blind_fact
             dset2 = dist_post.create_dataset("std_error", (1,), dtype='f')
             dset2[0] = dist_err#*blind_fact
-            dset3 = dist_post.create_dataset("conf_interval", (2,), dtype='f')
-            dset3[0] = dist_lo#*blind_fact
-            dset3[1] = dist_hi#*blind_fact
+            dset3 = dist_post.create_dataset("omega", (1,), dtype='f')
+            dset3[0] = solid_angle#*blind_fact
+            dset4 = dist_post.create_dataset("conf_interval", (2,), dtype='f')
+            dset4[0] = dist_lo#*blind_fact
+            dset4[1] = dist_hi#*blind_fact
             #write the redshifts for matching galaxies
             rshift_grp = f.create_group('redshifts')
-            rshift_grp['z'] = np.array(locs[2])
-            rshift_grp['z_err'] = np.array(locs[3])
+            rshift_grp['ra'] = np.array(locs[0])
+            rshift_grp['dec'] = np.array(locs[1])
+            rshift_grp['r'] = np.array(locs[2])
+            rshift_grp['z'] = np.array(locs[3])
+            rshift_grp['z_err'] = np.array(locs[4])
 
 make_samples(3)
