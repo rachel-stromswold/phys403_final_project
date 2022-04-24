@@ -70,7 +70,6 @@ def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
         dV = c_z*c_z / (h_0*h_0*h_0*math.sqrt(OMEGA_M*(1+z_i)**3 + OMEGA_A))
     except ValueError:
         dV = 1
-    dV = 1
     #compute marginal posteriors on the GW data and EM data
     marg_gw = math.exp( (h_0*gw_dist_mu - c_z)*(c_z - h_0*gw_dist_mu) / (2*gw_dist_var*h_0*h_0) )
     marg_em = math.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
