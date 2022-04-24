@@ -9,7 +9,8 @@ DIR_NAME = 'sim_events'
 H0_TRUE = 70 #km s^-1 Mpc^-1, true value of Hubble's constant used for simulations
 C_L = 2.99792458e5   #km s^-1 speed of light in vacuum
 
-GAL_DENSITY = 5e-6 #Mpc^-3 Estimate of the number of galaxies per unit volume TODO: this number is VERY sketchy, try to find something more realistic
+#GAL_DENSITY = 5e-6 #Mpc^-3 Estimate of the number of galaxies per unit volume TODO: this number is VERY sketchy, try to find something more realistic
+GAL_DENSITY = 5e-8
 #GW_LOC_RANGE = (300, 5000) #Mpc range that the simulated true value may take
 GW_LOC_RANGE = (300, 1000)
 GW_SIG_SIG = 50
