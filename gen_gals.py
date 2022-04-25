@@ -227,7 +227,7 @@ class Tree_kd:
             #check if the r=best node distance hypersphere intersects the current dividing plane. If it does, then we need to check that tree
             if brnch*(pt[ax] - self.nodes[nodes_visited[i]][0][ax]) < best_dist:
                 #check the subtree found by taking the other branch and find the distance of its nearest neighbor
-                ob_near = self.find_nearest(pt, root=self.nodes[nodes_visited[i]][1 + (brnch+1)//2])
+                ob_near = self.find_nearest(pt, root=self.nodes[nodes_visited[i]][1 + (1-brnch)//2])
                 ob_distsq = sum( [(pt[j] - ob_near[j])**2 for j in range(self.dim)] )
                 if ob_distsq < best_distsq:
                     best_pt = ob_near
