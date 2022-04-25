@@ -1,4 +1,4 @@
-#d_l d_l_hi d_l_lo omega
+#d_l (Gpc) d_l_hi (Gpc) d_l_lo (Gpc) omega (deg^2)
 1.55 0.40 0.60 150
 0.74 0.14 0.17 21
 3.55 2.27 1.66 1500
