@@ -9,13 +9,18 @@ import configparser
 import matplotlib.pyplot as plt
 
 DIR_NAME = 'sim_events'
+SKYLOC_SCALE = 1000
+MPC_PER_GPC = 1000
 
 config = configparser.ConfigParser()
 config.read('params.conf')
+GW_HIST_FNAME = config['simulation']['GW_hist_fname']
+CONFINE_THRESHOLD = float(config['simulation']['min_event_volume'])
 H0_TRUE = float(config['simulation']['H_0_true'])
 C_L = float(config['physical']['light_speed'])
 GAL_DENSITY = float(config['physical']['galaxy_density'])
 GW_LOC_RANGE = [float(val) for val in config['simulation']['GW_dist_range'].split(sep=',')]
+GW_LOC_SCALE = float(config['simulation']['GW_dist_err_scale'])
 GW_DERR_SIG = float(config['simulation']['GW_dist_err_sig'])
 SKY_ANGLE_RANGE = [int(val) for val in config['simulation']['skyloc_range'].split(sep=',')]
 MIN_GAL_DIST = float(config['simulation']['min_gal_dist'])
@@ -181,17 +186,20 @@ def calc_vol(dim, vert_lst):
     return abs( det(dim, [[v[i]-vert_lst[0][i] for i in range(dim)] for v in vert_lst[1:dim+1]]) )/math.factorial(dim) \
             + calc_vol(dim, vert_lst[1:])
 
-def sample_GW_events():
+def sample_GW_events(hist_fname, n_events):
     '''Sample GW events using an MCMC model which is "trained" on historic data specified in localizations.txt
-    returns: a list of simulated GW events. Each entry is a tuple with the elements (distance_expectation, std_error, sky_localization)
+    hist_fname: filename in csv format describing posterior distributions for historic events. The csv should have four colums. The first describes the expectation on the luminosity distance posterior, the second and third the upper and lower uncertainties on the distance respectively and the fourth column should give sky angle localizations. Distances should be in units Gpc and solid angles in deg^2
+    returns: a list of tuples for each event containing three elements, the measured luminosity distance, the uncertainty on luminosity distance and the solid angle confining sky location
     '''
     #import os.path
     from scipy.spatial import Voronoi, voronoi_plot_2d, KDTree
     import pickle
 
     #load historic event data.
-    dat = np.loadtxt("misc_data/localizations.txt", delimiter=' ')
-    dat = np.array([ dat[:,0], dat[:,3]/1000 ]).transpose()
+    dat = np.loadtxt(hist_fname, delimiter=',')
+    #the units deg^2 are larger by several orders of magnitude which causes Voronoi tesselations to break. scale these down to the same order of magnitude as everything else. We're approximating all distance posteriors as Gaussian anyway, so we restrict the upper and lower uncertainties to be the same.
+    dat = np.array([[d[0], (d[1]+d[2])/2, d[3]/SKYLOC_SCALE] for d in dat])
+    #dat = np.array([ dat[:,0], dat[:,3]/1000 ]).transpose()
     dim = len(dat[0])
     #generate the voronoi tesselation of the historic data points and calculate the volume of each
     vor = Voronoi(dat)
@@ -216,24 +224,49 @@ def sample_GW_events():
         return rec_vols[ind]
 
     #set up MCMC walkers
-    walk = MCMC_Walker(np.random.rand(2)*6.0, [[0.1, 6.0], [0.0, 15]], est_prob, 2.0)
+    walk = MCMC_Walker(np.random.rand(dim)*6.0, [[0.1, 6.0], [0.1, 6.0], [0.0, 15]], est_prob, 2.0)
     for i in range(10000):
         walk.step()
 
-    #sample data points
-    samps = walk.get_samples_thin()
+    #sample data points. We scaled skylocations down, so we have to scale them back up
+    samps = [(MPC_PER_GPC*s[0], MPC_PER_GPC*s[1], SKYLOC_SCALE*s[2]) for s in walk.get_samples_thin()]
+    #make pretty pictures
+    '''
     x_vals = [s[0] for s in samps]
-    y_vals = [s[1] for s in samps]
+    y_vals = [s[2] for s in samps]
     plt.scatter(x_vals, y_vals)
-    plt.scatter(dat[:,0], dat[:,1], color='orange')
-    plt.show()
+    plt.scatter(dat[:,0], dat[:,2], color='orange')
+    plt.show()'''
+    return samps[:n_events]
 
-sample_GW_events()
+def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_range, n_events):
+    '''Samples from a uniform population of potential GW events.
+    dist_range: a tuple containing minimal and maximal values for measured luminosity distance
+    dist_er_scale: the average error on an event is taken to be dist_er_scale*dist where dist is the sampled luminosity distance
+    dist_er_sigma: the observed uncertainty on luminosity distance is taken to be Gaussian with this specified uncertainty
+    skyloc_range: a tuple containing minimal and maximal values for sky localization solid angle
+    n_events: number of desired events
+    returns: a list of tuples for each event containing three elements, the measured luminosity distance, the uncertainty on luminosity distance and the solid angle confining sky location
+    '''
+    ret = []
+    for i in range(n_events):
+        dist = random.uniform(dist_range[0], dist_range[1])
+        dist_err = random.gauss(dist*dist_er_scale, dist_er_sigma)
+        solid_angle = random.uniform(skyloc_range[0], skyloc_range[1])
+        ret.append( (dist, dist_err, solid_angle) )
+    return ret
+
+#sample_GW_events()
 
 def soliddeg_to_solidrad(solid_deg):
     '''Convert solid angle given in degrees^2 to solid angle in radians^2
     '''
     return solid_deg*(math.pi*math.pi)/(180*180)
+
+def get_GW_event_vol(solid_angle, r_min, r_max):
+    '''Calculate the volume contained in the solid angle between r_min and r_max.
+    '''
+    return solid_angle*( r_max**3 - r_min**3 ) / 3
 
 def gen_cluster(solid_angle, d_l, d_l_err):
     '''Generate (part) of a galaxy cluster with an area parameterized by the solid angle of possible sky locations and an estimate on the luminosity distance d_l. The volume is taken by assuming that (d_l-d_l_err, d_l+d_l_err) describes some confidence interval for luminosity distance.
@@ -241,14 +274,11 @@ def gen_cluster(solid_angle, d_l, d_l_err):
     r_min = max(d_l-d_l_err, MIN_GAL_DIST)
     r_max = d_l+d_l_err
 
-    #generate a cone around the azimuthal angle which has the appropriate solid angle and use this for our volume calculation
-    '''theta_r = math.acos( 1 - soliddeg_to_solidrad(solid_angle)/(2*math.pi) )
-    lmbda = GAL_DENSITY*solid_angle*( r_max**3 - r_min**3 ) / 3''' #volume*number density
     #there are a few different ways we can partition up the space, but we'll give the declanation a range between -asin(sqrt(omega)/4) and asin(sqrt(omega)/4) and the right ascension a range between -sqrt(omega) and sqrt(omega)
     sqrt_omega = math.sqrt( soliddeg_to_solidrad(solid_angle) )
     theta_r = math.asin(sqrt_omega/4)
     phi_r = sqrt_omega
-    lmbda = GAL_DENSITY*solid_angle*( r_max**3 - r_min**3 ) / 3
+    lmbda = GAL_DENSITY*get_GW_event_vol(solid_angle, r_min, r_max)
 
     #comoving velocity dispersion for this particular cluster. We want to make sure this is positive, although negative values have roughly 0.3% chance to occur
     vel_sigma = -1.0
@@ -259,10 +289,6 @@ def gen_cluster(solid_angle, d_l, d_l_err):
     n_gals = int( random.gauss(lmbda, math.sqrt(lmbda)) )
     loc_arr = np.zeros(shape=(5, n_gals)) #colunms are (RA, DEC, z, z_err) respectively
     print("Creating cluster with %d galaxies" % n_gals)
-
-    #randomly generate locations for each galaxy
-    '''thetas = np.random.uniform(0.0, theta_r, n_gals)
-    phis = np.random.uniform(0.0, 2*math.pi, n_gals)'''
 
     #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
     r_facts = np.random.uniform(0, 1.0, n_gals)
@@ -282,22 +308,35 @@ def gen_cluster(solid_angle, d_l, d_l_err):
         #for radial motion z ~ v/c
         loc_arr[3, i] = vel / C_L
         loc_arr[4, i] = Z_MEAS_ERR
-        #TODO: add data for sky location
 
     return loc_arr
 
+def trim_events(samples):
+    '''Realistically, we wouldn't even bother performing analysis on events which have poor localizations. We thus find the best confined events (typically closer ones) and return only those.
+    returns: the number of sufficiently confined samples and the total number of samples generated
+    '''
+    ret = []
+    for i, s in enumerate(samples):
+        #calculate the volume of the event. If it is below some threshold, then add it to the return array
+        vol = get_GW_event_vol(s[2], s[0]-s[1], s[0]+s[1])
+        if vol < CONFINE_THRESHOLD:
+            ret.append(s)
+    return ret, len(samples)
+
 def make_samples(n_events):
-    for i in range(n_events):
+    #events = sample_GW_events_uniform(GW_LOC_RANGE, GW_LOC_SCALE, GW_DERR_SIG, SKY_ANGLE_RANGE, n_events)
+    events = trim_events( sample_GW_events(GW_HIST_FNAME, n_events) )
+    for i, ev in enumerate(events[0]):
         rshift_fname = DIR_NAME + ( '/ev_{}_rshifts.h5'.format(i) )
         #just by eyeballing data from the GWTC-2 and GWTC-3 papers, Gaussian errors on distance are roughly one third the distance.
-        dist = random.uniform(GW_LOC_RANGE[0], GW_LOC_RANGE[1])
-        dist_err = random.gauss(dist/3, GW_DERR_SIG)
+        dist = ev[0]
+        dist_err = ev[1]
         #take the 2*sigma confidence interval
         dist_lo = dist - dist_err*2
         dist_hi = dist + dist_err*2
 
         #TODO: uniformity on sky angle is almost certainly a highly unrealistic assumption
-        solid_angle = random.uniform(SKY_ANGLE_RANGE[0], SKY_ANGLE_RANGE[1])
+        solid_angle = ev[2]
 
         locs = gen_cluster(solid_angle, dist, 2*dist_err)
         print("saving cluster to " + rshift_fname)
@@ -322,4 +361,4 @@ def make_samples(n_events):
             rshift_grp['z'] = np.array(locs[3])
             rshift_grp['z_err'] = np.array(locs[4])
 
-#make_samples(3)
+make_samples(100)
