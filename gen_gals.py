@@ -199,6 +199,8 @@ def sample_GW_events(hist_fname, n_events):
     dat = np.loadtxt(hist_fname, delimiter=',')
     #the units deg^2 are larger by several orders of magnitude which causes Voronoi tesselations to break. scale these down to the same order of magnitude as everything else. We're approximating all distance posteriors as Gaussian anyway, so we restrict the upper and lower uncertainties to be the same.
     dat = np.array([[d[0], (d[1]+d[2])/2, d[3]/SKYLOC_SCALE] for d in dat])
+    dist_range = [min(dat[:,0]), max(dat[:,0])]
+    sky_range = [min(dat[:,3]), max(dat[:,3])]
     #dat = np.array([ dat[:,0], dat[:,3]/1000 ]).transpose()
     dim = len(dat[0])
     #generate the voronoi tesselation of the historic data points and calculate the volume of each
@@ -224,7 +226,7 @@ def sample_GW_events(hist_fname, n_events):
         return rec_vols[ind]
 
     #set up MCMC walkers
-    walk = MCMC_Walker(np.random.rand(dim)*6.0, [[0.1, 6.0], [0.1, 6.0], [0.0, 15]], est_prob, 2.0)
+    walk = MCMC_Walker(np.random.rand(dim)*6.0, [dist_range, dist_range, sky_range], est_prob, 2.0)
     for i in range(10000):
         walk.step()
 
