@@ -150,115 +150,6 @@ class MCMC_Walker:
         thin_fact = int(tc*thin_ratio)
         return [self.history[i][0] for i in range(int(3*tc), len(self.history), thin_fact)]
 
-class Tree_kd:
-    '''A kd tree for hierarchically organinzing points.
-    '''
-    def _split_pts(self, subpts, ax=0):
-        '''A helper method used for recursively generating the kd tree.
-        '''
-        n_pts = subpts.shape[0]
-        if n_pts > 0:
-            subpts_new = subpts[subpts[:, ax].argsort()]
-            #To predictably handle degenerate coordinates we take the lowest value for the median
-            split_ind = n_pts//2
-            split_val = subpts_new[split_ind, ax]
-            while split_ind > 0 and subpts_new[split_ind-1, ax] == split_val:
-                split_ind -= 1
-
-            #iteratively switch sort axis
-            #ax = (ax+1) % self.dim
-
-            #use the first available index to store this node
-            cur_ind = self._n_used
-            self._n_used += 1
-            self.nodes[cur_ind][0] = subpts_new[split_ind]
-
-            #give points less than the split to the left child and the rest to the right child
-            self.nodes[cur_ind][1] = self._split_pts(subpts_new[:split_ind], ax=(ax+1) % self.dim)
-            self.nodes[cur_ind][2] = self._split_pts(subpts_new[split_ind + 1:], ax=(ax+1) % self.dim)
-
-            return cur_ind
-        return -1
-
-    def __init__(self, points):
-        self.dim = len(points[0])
-        ax = 0
-        #we initialize an empty list which stores the node. The first element specifies the index of the point vertex and the next two elements specify children indices in the self.nodes_list. self.n_used is used when generating the tree.
-        self.nodes = [[[], -1, -1] for pt in points]
-        self._n_used = 0
-        self._split_pts(points)
-        self.pt_inds = [0 for pt in points]
-        #we need to figure out the index each where each point is stored.
-        #TODO: this is an O(n^2) operation and by not being lazy can be generated at the same time as _split_pts() (which would be a LOT faster)
-        for i, pt in enumerate(points):
-            for j in range(len(self.nodes)):
-                equiv = True
-                for k, el in enumerate(pt):
-                    if self.nodes[j][0][k] != el:
-                        equiv = False
-                        break
-                if equiv:
-                    self.pt_inds[i] = j
-
-    def _distsq(self, pt, i):
-        '''Helper function to find the distance between a point and the ith node
-        '''
-        return sum( [(pt[j] - self.nodes[i][0][j])**2 for j in range(self.dim)] )
-
-    def find_nearest(self, pt, root=0):
-        '''Iterate through the kd-tree to find the point closest to pt.
-        returns: the point and its corresponding index in the set from which the kd-tree was generated.
-        '''
-        #figure out the axis and setup information for tracking
-        ax = root % self.dim
-        best_pt = self.nodes[root][0]
-        best_distsq = np.inf
-        best_ind = 0
-        cur_ind = root
-        branches = []
-        nodes_visited = [root]
-
-        #iterate until we reach a leaf specified by a -1
-        while cur_ind >= 0:
-            #update the best found distance
-            n_dist = self._distsq(pt, cur_ind)
-            if n_dist < best_distsq:
-                best_distsq = n_dist
-                best_pt = self.nodes[cur_ind][0]
-                best_ind = cur_ind
-
-            #find the appropriate branch
-            if pt[ax] < self.nodes[cur_ind][0][ax]:
-                nodes_visited.append(self.nodes[cur_ind][1])
-                branches.append(-1) #this is less than the branch so store a minus sign
-            else:
-                nodes_visited.append(self.nodes[cur_ind][2])
-                branches.append(1)
-            cur_ind = nodes_visited[-1]
-
-            #update the sorting axis
-            ax = (ax+1) % self.dim
-
-        #move back up the tree to check neighbors
-        i = len(nodes_visited)-2
-        best_dist = math.sqrt(best_distsq)
-        while i >= 0:
-            ax = i % self.dim
-            brnch = branches[i]
-            #check if the r=best node distance hypersphere intersects the current dividing plane. If it does, then we need to check that tree
-            if brnch*(pt[ax] - self.nodes[nodes_visited[i]][0][ax]) < best_dist:
-                #check the subtree found by taking the other branch and find the distance of its nearest neighbor
-                ob_near = self.find_nearest(pt, root=self.nodes[nodes_visited[i]][1 + (1-brnch)//2])[1]
-                ob_distsq = sum( [(pt[j] - ob_near[j])**2 for j in range(self.dim)] )
-                if ob_distsq < best_distsq:
-                    best_pt = ob_near
-                    best_distsq = ob_distsq
-                    best_dist = math.sqrt(best_distsq)
-                    best_ind = cur_ind
-
-            i -= 1
-        return self.pt_inds[best_ind], best_pt
-
 def det(dim, vert_list):
     '''Helper function for calc_vol which computes the determinant of the matrix specified by the iterable of vertices.
     '''
@@ -295,18 +186,19 @@ def sample_GW_events():
     returns: a list of simulated GW events. Each entry is a tuple with the elements (distance_expectation, std_error, sky_localization)
     '''
     #import os.path
-    from scipy.spatial import Voronoi, voronoi_plot_2d
+    from scipy.spatial import Voronoi, voronoi_plot_2d, KDTree
     import pickle
 
-    #if not os.path.isfile('data_misc/voronoi.pckl'):
+    #load historic event data.
     dat = np.loadtxt("misc_data/localizations.txt", delimiter=' ')
     dat = np.array([ dat[:,0], dat[:,3]/1000 ]).transpose()
     dim = len(dat[0])
     #generate the voronoi tesselation of the historic data points and calculate the volume of each
     vor = Voronoi(dat)
-    voronoi_plot_2d(vor, show_points=True, show_vertices=True)
-    plt.show()
+    #setup the kd-tree to quickly find nearest neighbors
+    tree = KDTree(dat)
 
+    #calculate the reciprocal of the volume of each Voronoi cell. This gives an estimate of the PDF within that cell.
     rec_vols = np.zeros(len(vor.regions))
     for i, reg in enumerate(vor.regions):
         valid = True
@@ -316,29 +208,24 @@ def sample_GW_events():
         if valid:
             vol = calc_vol(dim, [vor.vertices[j] for j in reg])
             rec_vols[i] = 0.0 if vol == 0 else 1/vol
-            #rec_vols[i] = vol
 
-    #setup the kd-tree to quickly find nearest neighbors
-    tree = Tree_kd(dat)
     #we estimate the probability of a point by the reciprocal of the volume of its corresponding region in the Voronoi tesselation
     def est_prob(pt):
-        near = tree.find_nearest(pt)[0]
+        near = tree.query(pt)[1]
         ind = vor.point_region[near]
         return rec_vols[ind]
 
-    #data = [[est_prob([j, k]) for j in np.linspace(math.log(0.4), math.log(10), num=100)] for k in np.linspace(math.log(10), math.log(10000), num=100)]
-    #data = [[vor.point_region[tree.find_nearest([j*0.06, k*100])[0]] for j in range(100)] for k in range(100)]
-    #plt.imshow(data)
-    #plt.show()
-    walk = MCMC_Walker([1.0, 1.0], [[0.1, 6.0], [0.0, 10]], est_prob, 2.0)
-    for i in range(1000):
+    #set up MCMC walkers
+    walk = MCMC_Walker(np.random.rand(2)*6.0, [[0.1, 6.0], [0.0, 15]], est_prob, 2.0)
+    for i in range(10000):
         walk.step()
+
+    #sample data points
     samps = walk.get_samples_thin()
-    #print(samps)
     x_vals = [s[0] for s in samps]
     y_vals = [s[1] for s in samps]
     plt.scatter(x_vals, y_vals)
-    plt.scatter(dat[:,0], dat[:,1])
+    plt.scatter(dat[:,0], dat[:,1], color='orange')
     plt.show()
 
 sample_GW_events()
@@ -435,4 +322,4 @@ def make_samples(n_events):
             rshift_grp['z'] = np.array(locs[3])
             rshift_grp['z_err'] = np.array(locs[4])
 
-make_samples(3)
+#make_samples(3)
