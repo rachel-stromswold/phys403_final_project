@@ -6,6 +6,7 @@ import h5py
 
 import argparse
 import configparser
+import matplotlib.pyplot as plt
 
 DIR_NAME = 'sim_events'
 
@@ -68,7 +69,7 @@ class MCMC_Walker:
 
         #this corresponds to alpha < 1
         if p_t1 < self.p_t0:
-            if random.random() < p_t1 / self.p_t0):
+            if random.random() < p_t1 / self.p_t0:
                 self.x = prop
                 self.p_t0 = p_t1
         else:
@@ -178,6 +179,18 @@ class Tree_kd:
         self.nodes = [[[], -1, -1] for pt in points]
         self._n_used = 0
         self._split_pts(points)
+        self.pt_inds = [0 for pt in points]
+        #we need to figure out the index each where each point is stored.
+        #TODO: this is an O(n^2) operation and by not being lazy can be generated at the same time as _split_pts() (which would be a LOT faster)
+        for i, pt in enumerate(points):
+            for j in range(len(self.nodes)):
+                equiv = True
+                for k, el in enumerate(pt):
+                    if self.nodes[j][0][k] != el:
+                        equiv = False
+                        break
+                if equiv:
+                    self.pt_inds[i] = j
 
     def _distsq(self, pt, i):
         '''Helper function to find the distance between a point and the ith node
@@ -185,26 +198,26 @@ class Tree_kd:
         return sum( [(pt[j] - self.nodes[i][0][j])**2 for j in range(self.dim)] )
 
     def find_nearest(self, pt, root=0):
-        #base case, this node is a leaf
-        #if root < 0:
-        #    return self.nodes[0][0]
-
+        '''Iterate through the kd-tree to find the point closest to pt.
+        returns: the point and its corresponding index in the set from which the kd-tree was generated.
+        '''
         #figure out the axis and setup information for tracking
         ax = root % self.dim
         best_pt = self.nodes[root][0]
         best_distsq = np.inf
+        best_ind = 0
         cur_ind = root
         branches = []
         nodes_visited = [root]
 
         #iterate until we reach a leaf specified by a -1
         while cur_ind >= 0:
-            print(cur_ind)
             #update the best found distance
             n_dist = self._distsq(pt, cur_ind)
             if n_dist < best_distsq:
                 best_distsq = n_dist
                 best_pt = self.nodes[cur_ind][0]
+                best_ind = cur_ind
 
             #find the appropriate branch
             if pt[ax] < self.nodes[cur_ind][0][ax]:
@@ -227,15 +240,16 @@ class Tree_kd:
             #check if the r=best node distance hypersphere intersects the current dividing plane. If it does, then we need to check that tree
             if brnch*(pt[ax] - self.nodes[nodes_visited[i]][0][ax]) < best_dist:
                 #check the subtree found by taking the other branch and find the distance of its nearest neighbor
-                ob_near = self.find_nearest(pt, root=self.nodes[nodes_visited[i]][1 + (1-brnch)//2])
+                ob_near = self.find_nearest(pt, root=self.nodes[nodes_visited[i]][1 + (1-brnch)//2])[1]
                 ob_distsq = sum( [(pt[j] - ob_near[j])**2 for j in range(self.dim)] )
                 if ob_distsq < best_distsq:
                     best_pt = ob_near
                     best_distsq = ob_distsq
                     best_dist = math.sqrt(best_distsq)
+                    best_ind = cur_ind
 
             i -= 1
-        return best_pt
+        return self.pt_inds[best_ind], best_pt
 
 def det(dim, vert_list):
     '''Helper function for calc_vol which computes the determinant of the matrix specified by the iterable of vertices.
@@ -273,30 +287,43 @@ def sample_GW_events():
     returns: a list of simulated GW events. Each entry is a tuple with the elements (distance_expectation, std_error, sky_localization)
     '''
     #import os.path
-    from scipy.spatial import Voronoi
+    from scipy.spatial import Voronoi, voronoi_plot_2d
     import pickle
 
     #if not os.path.isfile('data_misc/voronoi.pckl'):
-    dat = np.loadtxt("localizations.txt", delimiter=' ')
+    dat = np.loadtxt("misc_data/localizations.txt", delimiter=' ')
+    dat = np.array([dat[:,0], dat[:,3]/1000]).transpose()
     dim = len(dat[0])
     #generate the voronoi tesselation of the historic data points and calculate the volume of each
     vor = Voronoi(dat)
     rec_vols = np.zeros(len(vor.regions))
-    for reg in vor.regions:
+    for i, reg in enumerate(vor.regions):
         valid = True
         for j in reg:
             if j < 0:
                 valid = False
         if valid:
-            vol = calc_vol(DIM, [vor.vertices[j] for j in reg])
-            rec_vols[i] = 0.0 if vol == 0 else 1/vol
+            vol = calc_vol(dim, [vor.vertices[j] for j in reg])
+            #rec_vols[i] = 0.0 if vol == 0 else 1/vol
+            rec_vols[i] = vol
 
+    #setup the kd-tree to quickly find nearest neighbors
+    tree = Tree_kd(dat)
     #we estimate the probability of a point by the reciprocal of the volume of its corresponding region in the Voronoi tesselation
     def est_prob(pt):
-        ind = vor.point_region([pt])[0]
-        return 0.0 if vols[ind] == 0 else 1/vols[ind]
+        near = tree.find_nearest(pt)[0]
+        ind = vor.point_region[near]
+        return rec_vols[ind]
 
-    data = [est_prob([j*0.6, k*1000]) for j in range(10)] for k in range(10)]
+    voronoi_plot_2d(vor, show_points=True, show_vertices=True)
+    plt.show()
+
+    #data = [[est_prob([j*0.06, k*100]) for j in range(100)] for k in range(100)]
+    data = [[vor.point_region[tree.find_nearest([j*0.06, k*100])[0]] for j in range(100)] for k in range(100)]
+    plt.imshow(data)
+    plt.show()
+
+sample_GW_events()
 
 def soliddeg_to_solidrad(solid_deg):
     '''Convert solid angle given in degrees^2 to solid angle in radians^2
