@@ -52,6 +52,12 @@ class MCMC_Walker:
 
         self.time_consts = np.zeros(self.n)
 
+    def in_prior(self, pt):
+        for i in range(self.n):
+            if pt[i] < self.prior_range[i][0] or pt[i] > self.prior_range[i][1]:
+                return False
+        return True
+
     def step(self):
         '''Take a single step by making a proposal and calculating the acceptance likelihood.
         '''
@@ -64,17 +70,18 @@ class MCMC_Walker:
         for i, ra in zip(range(self.n), self.prior_range):
             prop[i] = rad*prop[i]*(ra[1] - ra[0]) + self.x[i]
 
-        #calculate the likelihood of the new point
-        p_t1 = self.likelihood(prop)
+        if self.in_prior(prop):
+            #calculate the likelihood of the new point
+            p_t1 = self.likelihood(prop)
 
-        #this corresponds to alpha < 1
-        if p_t1 < self.p_t0:
-            if random.random() < p_t1 / self.p_t0:
+            #this corresponds to alpha < 1
+            if p_t1 < self.p_t0:
+                if random.random() < p_t1 / self.p_t0:
+                    self.x = prop
+                    self.p_t0 = p_t1
+            else:
                 self.x = prop
                 self.p_t0 = p_t1
-        else:
-            self.x = prop
-            self.p_t0 = p_t1
 
     def calc_autocorrelation(self, max_k=np.inf, zero_stop=True):
         '''Calculate the autocorrelation function of this walker and return the time constant.
@@ -122,6 +129,7 @@ class MCMC_Walker:
                     if corr < 0:
                         cross_ind = k
                         break
+            from scipy.optimize import curve_fit
             opt, cov = curve_fit(lambda x, a, b: a - b*x, [k for k in range(cross_ind)], np.log(autocorrs[j][:cross_ind]))
             self.time_consts[j] = 1.0 / opt[1]
 
@@ -292,10 +300,13 @@ def sample_GW_events():
 
     #if not os.path.isfile('data_misc/voronoi.pckl'):
     dat = np.loadtxt("misc_data/localizations.txt", delimiter=' ')
-    dat = np.array([dat[:,0], dat[:,3]/1000]).transpose()
+    dat = np.array([ dat[:,0], dat[:,3]/1000 ]).transpose()
     dim = len(dat[0])
     #generate the voronoi tesselation of the historic data points and calculate the volume of each
     vor = Voronoi(dat)
+    voronoi_plot_2d(vor, show_points=True, show_vertices=True)
+    plt.show()
+
     rec_vols = np.zeros(len(vor.regions))
     for i, reg in enumerate(vor.regions):
         valid = True
@@ -304,8 +315,8 @@ def sample_GW_events():
                 valid = False
         if valid:
             vol = calc_vol(dim, [vor.vertices[j] for j in reg])
-            #rec_vols[i] = 0.0 if vol == 0 else 1/vol
-            rec_vols[i] = vol
+            rec_vols[i] = 0.0 if vol == 0 else 1/vol
+            #rec_vols[i] = vol
 
     #setup the kd-tree to quickly find nearest neighbors
     tree = Tree_kd(dat)
@@ -315,12 +326,19 @@ def sample_GW_events():
         ind = vor.point_region[near]
         return rec_vols[ind]
 
-    voronoi_plot_2d(vor, show_points=True, show_vertices=True)
-    plt.show()
-
-    #data = [[est_prob([j*0.06, k*100]) for j in range(100)] for k in range(100)]
-    data = [[vor.point_region[tree.find_nearest([j*0.06, k*100])[0]] for j in range(100)] for k in range(100)]
-    plt.imshow(data)
+    #data = [[est_prob([j, k]) for j in np.linspace(math.log(0.4), math.log(10), num=100)] for k in np.linspace(math.log(10), math.log(10000), num=100)]
+    #data = [[vor.point_region[tree.find_nearest([j*0.06, k*100])[0]] for j in range(100)] for k in range(100)]
+    #plt.imshow(data)
+    #plt.show()
+    walk = MCMC_Walker([1.0, 1.0], [[0.1, 6.0], [0.0, 10]], est_prob, 2.0)
+    for i in range(1000):
+        walk.step()
+    samps = walk.get_samples_thin()
+    #print(samps)
+    x_vals = [s[0] for s in samps]
+    y_vals = [s[1] for s in samps]
+    plt.scatter(x_vals, y_vals)
+    plt.scatter(dat[:,0], dat[:,1])
     plt.show()
 
 sample_GW_events()
