@@ -13,6 +13,7 @@ SKYLOC_SCALE = 1000
 MPC_PER_GPC = 1000
 
 POISSON_CUTOFF_LAMBDA = 20
+8_BY_PI_QUADROOT = (8 / math.pi)**0.25
 
 config = configparser.ConfigParser()
 config.read('params.conf')
@@ -367,24 +368,37 @@ def gen_clusters(solid_angle, d_l, d_l_err):
     for dist, n_gals in zip(dist_clusts, n_gals_arr):
         clust_phi = random.uniform(-phi_r, phi_r)
         clust_theta = random.uniform(-theta_r, theta_r)
+        #get the center of galaxy in Cartesian coordinates
+        x_cent = dist*math.sin(clust_theta)*math.cos(clust_phi)
+        y_cent = dist*math.sin(clust_theta)*math.sin(clust_phi)
+        z_cent = dist*math.cos(clust_theta)
 
-        #The typical radius goes as a power law in the number of galaxies
+        #The typical radius goes as a power law in the number of galaxies. We take the distance of the galaxies to follow a three dimensional Gaussian about the center. From this we can derive that if velocities are Gaussian distributed, they should have mean 0 and variance r_200*sqrt(pi/2)
         r_200 = R_200_SCALE*(n_gals**R_SCALE_POW)
-        gals_cent_r = np.random.normal(0.0, r_200, n_gals)
+        gals_cent_r = np.random.normal(0, r_200, 3*n_gals)
 
-        #generate the (radial components) of peculiar velocity for each galaxy
-        pec_vels = np.random.normal(0.0, vel_sigma, n_gals)
+        #generate the (radial components) of peculiar velocity for each galaxy. We don't multiply by three because we only care about the radial component
+        pec_vels = np.random.normal(0.0, math.sqrt(r_200*8_BY_PI_QUADROOT), n_gals)
         #calculate corresponding redshifts for each galaxy
         for i in range(n_gals):
-            #calculate the velocity using Hubble's law + peculiar motion
+            #get the location of the galaxy in absolute coordinates
+            x = x_cent + gals_cent_r[3*i]
+            y = y_cent + gals_cent_r[3*i+1]
+            z = z_cent + gals_cent_r[3*i+2]
+            #calculate the velocity using Hubble's law + peculiar motion. We only want the radial component, hence the factor 1/sqrt(3)
             vel = H0_TRUE*r_gals[i] + pec_vels[i]
             #store RA and DEC
-            loc_arr[0, i] = random.uniform(-phi_r, phi_r)
-            loc_arr[1, i] = random.uniform(-theta_r, theta_r)
-            loc_arr[2, i] = r_gals[i]
-            #for radial motion z ~ v/c
-            loc_arr[3, i] = vel / C_L
-            loc_arr[4, i] = Z_MEAS_ERR
+            ra = math.atan2(y, x)
+            dec = math.pi/2 - math.atan2(z, x**2 + y**2)
+            r = math.sqrt(x**2 + y**2 + z**2)
+            #it is possible that a cluster galaxy isn't in the region of space we're interested in. We must check this
+            if (ra > -phi_r and ra) < phi_r and (dec > -theta_r and dec < theta_r) and (r > r_min and r < r_max):
+                loc_arr[0, i] = ra*180/math.pi
+                loc_arr[1, i] = dec*180/math.pi
+                loc_arr[2, i] = r
+                #for radial motion z ~ v/c
+                loc_arr[3, i] = vel / C_L
+                loc_arr[4, i] = Z_MEAS_ERR
 
     return loc_arr
 
