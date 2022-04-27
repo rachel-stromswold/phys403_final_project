@@ -1,10 +1,10 @@
 simulate: sim_events
-	python gen_gals.py
-	python est_hubble.py --type sim_events
+	python3 gen_gals.py
+	python3 est_hubble.py --type sim_events
 
 GW_data: GW_Events
-	python query.py
-	python est_hubble.py --type GW_events
+	python3 query.py
+	python3 est_hubble.py --type GW_events
 
 sim_events:
 	mkdir -p sim_events

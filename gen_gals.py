@@ -204,7 +204,7 @@ def sample_GW_events(hist_fname, n_events):
     #the units deg^2 are larger by several orders of magnitude which causes Voronoi tesselations to break. scale these down to the same order of magnitude as everything else. We're approximating all distance posteriors as Gaussian anyway, so we restrict the upper and lower uncertainties to be the same.
     dat = np.array([[d[0], (d[1]+d[2])/2, d[3]/SKYLOC_SCALE] for d in dat])
     dist_range = [min(dat[:,0]), max(dat[:,0])]
-    sky_range = [min(dat[:,3]), max(dat[:,3])]
+    sky_range = [min(dat[:,2]), max(dat[:,2])]
     #dat = np.array([ dat[:,0], dat[:,3]/1000 ]).transpose()
     dim = len(dat[0])
     #generate the voronoi tesselation of the historic data points and calculate the volume of each
