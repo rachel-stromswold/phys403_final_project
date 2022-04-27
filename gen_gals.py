@@ -440,7 +440,7 @@ def make_samples(n_events):
         locs = gen_clusters(solid_angle, dist, 2*dist_err)
         print("saving cluster to " + rshift_fname)
         #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
-        '''with h5py.File(rshift_fname, 'w') as f:
+        with h5py.File(rshift_fname, 'w') as f:
             #write the distance information
             dist_post = f.create_group("distance_posterior")
             dset1 = dist_post.create_dataset("expectation", (1,), dtype='f')
@@ -458,6 +458,6 @@ def make_samples(n_events):
             rshift_grp['dec'] = np.array(locs[1])
             rshift_grp['r'] = np.array(locs[2])
             rshift_grp['z'] = np.array(locs[3])
-            rshift_grp['z_err'] = np.array(locs[4])'''
+            rshift_grp['z_err'] = np.array(locs[4])
 
 make_samples(100)
