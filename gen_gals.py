@@ -18,6 +18,7 @@ GW_HIST_FNAME = config['simulation']['GW_hist_fname']
 CONFINE_THRESHOLD = float(config['simulation']['min_event_volume'])
 H0_TRUE = float(config['simulation']['H_0_true'])
 C_L = float(config['physical']['light_speed'])
+CLUST_DENSITY = float(config['physical']['cluster_density'])
 GAL_DENSITY = float(config['physical']['galaxy_density'])
 GW_LOC_RANGE = [float(val) for val in config['simulation']['GW_dist_range'].split(sep=',')]
 GW_LOC_SCALE = float(config['simulation']['GW_dist_err_scale'])
@@ -29,6 +30,9 @@ VEL_DISP_ERR = float(config['physical']['vel_disp_er'])
 Z_MEAS_ERR = float(config['simulation']['z_er'])
 if len(GW_LOC_RANGE) != 2 or len(SKY_ANGLE_RANGE) != 2:
     raise ValueError("Ranges must have two elements.")
+
+#the dimensionless Hubble constant H_0 / (100 km s^-1 Mpc^-1)
+LITTLE_H = H0_TRUE / 100
 
 #override configuration file with command line arguments if supplied
 parser = argparse.ArgumentParser(description='Query sky-surveys for redshift data corresponding to a gravitational-wave detection.')
