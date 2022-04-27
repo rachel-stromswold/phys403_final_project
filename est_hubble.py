@@ -4,6 +4,8 @@ import math
 from scipy import integrate
 import h5py
 
+import os
+
 import argparse
 import configparser
 
@@ -21,7 +23,7 @@ OMEGA_A = float(config['physical']['omega_lambda'])
 C_L = float(config['physical']['light_speed'])
 C_L_SQ = C_L*C_L
 SAMPLE_TYPE = config['analysis']['type'].strip()
-EVENT_LIST = [val.strip() for val in config['analysis']['events'].split(sep=',')]
+EVENT_LIST = sorted(['_'.join(s.split('_')[:2]) for s in os.listdir(config['analysis']['event_dir'])])
 if len(PRIOR_RANGE) != 2:
     raise ValueError("Ranges must have two elements.")
 if len(EVENT_LIST) == 0:
@@ -30,8 +32,12 @@ if len(EVENT_LIST) == 0:
 #override configuration file with command line arguments if supplied
 parser = argparse.ArgumentParser(description='Estimate the Hubble constant based on a GW event volume and a corresponding skymap.')
 parser.add_argument('--type', type=str, nargs='?', help='Type of events to sample. Accepcted values are GW_events for real events and sim_events for simulated events. Defaults to {}.'.format(SAMPLE_TYPE), default=SAMPLE_TYPE)
+parser.add_argument('--n-events-use', type=int, default=len(EVENT_LIST), help='Number of events to use in the Hubble constant estimation. Must be <= the number of events available.')
+parser.add_argument('--save-intervals', type=str, help='Print the confidence intervals.')
+parser.add_argument('--n-cores-max', type=int, default=N_CORES, help='Maximum number of cores to use. Otherwise computer get angry >:{')
 args = parser.parse_args()
 SAMPLE_TYPE = args.type
+N_CORES = min(args.n_cores_max, N_CORES)
 
 def integrand_em(z_i, z_mu, z_err_sq, h_0):
     '''integrand for Bayes' theorem
@@ -121,19 +127,19 @@ class Posterior_PDF:
         if h_ind_guess >= list_len - 1:
             h_ind_guess = list_len - 2
         #look at adjacent points to find the best value
-        err = abs(self.d_list[h_ind_guess] - h)
+        err = abs(self.h_list[h_ind_guess] - h)
         best_ind = h_ind_guess
-        if abs(self.d_list[h_ind_guess - 1] - h) < err:
+        if abs(self.h_list[h_ind_guess - 1] - h) < err:
             best_ind = h_ind_guess - 1
-            err = abs(self.d_list[h_ind_guess - 1] - h)
-        if abs(self.d_list[h_ind_guess + 1] - h) < err:
+            err = abs(self.h_list[h_ind_guess - 1] - h)
+        if abs(self.h_list[h_ind_guess + 1] - h) < err:
             best_ind = h_ind_guess + 1
         return best_ind
 
     def integrate(self, a=-1, b=-1):
         '''Finds the integral int_a^b p(d) dd
-        d_list: iterable of distances, 
-        p_list: iterable of probabilities associated with each value of d. This must have the same length as d_list
+        h_list: iterable of distances, 
+        p_list: iterable of probabilities associated with each value of d. This must have the same length as h_list
         a: lower bound or -1 to integrate from the lowest possible value for H_0
         b: upper bound or -1 to integrate up to the highest possible value for H_0
         returns: approximation of integral in that value
@@ -178,11 +184,12 @@ class Posterior_PDF:
         return lower, self.h_list[-1], int_p-int_p_low
 
     def find_confidence(self, conf, tolerance=0.01, max_iters=10):
-        '''find the minimum width conf confidence interval for the approximate probability distribution function specified by d_list and p_list
+        '''find the minimum width conf confidence interval for the approximate probability distribution function specified by h_list and p_list
         conf: confidence interval to estimate
         tolerance: we stop trying to refine our interval if we have a confidence that is within tolerance a default 1% tolerance is used
         max_iters: maximum number of iterations to perform, even if we didn't achieve the desired tolerance
         '''
+        self.normalize()
         center = self.ex_value()
         #these store the maximum probability heights which find_interval_iter is allowed to explore
         center_val = self.p_list[self.guess_index(center)]
@@ -202,7 +209,7 @@ class Posterior_PDF:
                         h_lo = self.h_list[i-1] + (height - self.p_list[i-1])*(self.h_list[i] - self.h_list[i-1]) / (p - self.p_list[i-1])
                 if i > 0 and p < height and self.p_list[i-1] > height:
                     #linear interpolation
-                    d_hi = self.h_list[i-1] + (height - self.p_list[i-1])*(self.h_list[i] - self.h_list[i-1]) / (p - self.p_list[i-1])
+                    h_hi = self.h_list[i-1] + (height - self.p_list[i-1])*(self.h_list[i] - self.h_list[i-1]) / (p - self.p_list[i-1])
             int_val = self.integrate(h_lo, h_hi)
             #check for convergence
             if abs(int_val - conf) < tolerance or n_visited_heights > max_iters:
@@ -224,7 +231,7 @@ class Posterior_PDF:
         '''
         #use the trapezoid rule
         int_p = 0.0
-        for i in range( 1, len(support) ):
+        for i in range( 1, len(self.h_list) ):
             int_p += (self.h_list[i] - self.h_list[i-1])*(self.p_list[i] + self.p_list[i-1])/2
         self.p_list /= int_p
 
@@ -270,10 +277,22 @@ class Posterior_PDF:
         galaxies.close()
 
 pdf = Posterior_PDF(PRIOR_RANGE)
-for ev in EVENT_LIST:
+
+if args.save_intervals is not None:
+    ci_array = np.empty((args.n_events_use, 6))
+
+for i, ev in enumerate(EVENT_LIST[:args.n_events_use]):
     #load the list of potential galaxies
     rshift_fname = SAMPLE_TYPE + '/' + ev + '_rshifts.h5'
     pdf.add_event(rshift_fname)
+    
+    if args.save_intervals is not None:
+        ci_array[i,0:2] = pdf.find_confidence(0.68)[:2]
+        ci_array[i,2:4] = pdf.find_confidence(0.95)[:2]
+        ci_array[i,4:6] = pdf.find_confidence(0.997)[:2]
+
+if args.save_intervals is not None:
+    np.savetxt(args.save_intervals, ci_array, header="0.68 lower, 0.68 upper, 0.95 lower, 0.95 upper, 0.997 lower, 0.997 upper")
 
 plt.plot(pdf.h_list, pdf.p_list)
 plt.xlabel(r'$H_0$ km s$^{-1}$ Mpc$^{-1}$')

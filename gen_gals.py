@@ -331,8 +331,12 @@ def trim_events(samples):
 
 def make_samples(n_events):
     #events = sample_GW_events_uniform(GW_LOC_RANGE, GW_LOC_SCALE, GW_DERR_SIG, SKY_ANGLE_RANGE, n_events)
-    events = trim_events( sample_GW_events(GW_HIST_FNAME, n_events) )
-    for i, ev in enumerate(events[0]):
+    events = []
+    while len(events) < n_events:
+        events += trim_events(sample_GW_events(GW_HIST_FNAME, n_events))[0]
+    events = events[:n_events]
+    #events = trim_events( sample_GW_events(GW_HIST_FNAME, n_events) )
+    for i, ev in enumerate(events):
         rshift_fname = DIR_NAME + ( '/ev_{}_rshifts.h5'.format(i) )
         #just by eyeballing data from the GWTC-2 and GWTC-3 papers, Gaussian errors on distance are roughly one third the distance.
         dist = ev[0]
