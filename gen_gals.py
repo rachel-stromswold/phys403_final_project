@@ -12,6 +12,8 @@ DIR_NAME = 'sim_events'
 SKYLOC_SCALE = 1000
 MPC_PER_GPC = 1000
 
+POISSON_CUTOFF_LAMBDA = 20
+
 config = configparser.ConfigParser()
 config.read('params.conf')
 GW_HIST_FNAME = config['simulation']['GW_hist_fname']
@@ -20,6 +22,9 @@ H0_TRUE = float(config['simulation']['H_0_true'])
 C_L = float(config['physical']['light_speed'])
 CLUST_DENSITY = float(config['physical']['cluster_density'])
 GAL_DENSITY = float(config['physical']['galaxy_density'])
+CRIT_GAL_N = int(config['physical']['crit_n_gal'])
+R_200_SCALE = float(config['physical']['scale_const'])
+R_SCALE_POW = float(config['physical']['scale_pow'])
 GW_LOC_RANGE = [float(val) for val in config['simulation']['GW_dist_range'].split(sep=',')]
 GW_LOC_SCALE = float(config['simulation']['GW_dist_err_scale'])
 GW_DERR_SIG = float(config['simulation']['GW_dist_err_sig'])
@@ -274,7 +279,25 @@ def get_GW_event_vol(solid_angle, r_min, r_max):
     '''
     return solid_angle*( r_max**3 - r_min**3 ) / 3
 
-def gen_cluster(solid_angle, d_l, d_l_err):
+def gen_poisson(mean):
+    '''Sample from a Poisson distribution
+    '''
+    #for small lambdas we sample from a Poisson distribution. Above a sufficiently large lambda, we take the distribution to be Gaussian
+    if lmbda < POISSON_CUTOFF_LAMBDA:
+        u = random.uniform(0.0, 1.0)
+
+        const = math.exp(-mean)
+        p_s = 0.0
+        n = 0
+        while True:
+            p_s += math.pow(mean, n)*const / factorial(n)
+            if p_s >= u:
+                return n
+            n += 1
+    else:
+        return int( random.gauss(lmbda, math.sqrt(lmbda)) )
+
+def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     '''Generate (part) of a galaxy cluster with an area parameterized by the solid angle of possible sky locations and an estimate on the luminosity distance d_l. The volume is taken by assuming that (d_l-d_l_err, d_l+d_l_err) describes some confidence interval for luminosity distance.
     '''
     r_min = max(d_l-d_l_err, MIN_GAL_DIST)
@@ -292,7 +315,7 @@ def gen_cluster(solid_angle, d_l, d_l_err):
         vel_sigma = random.gauss(VEL_DISP_MEAN, VEL_DISP_ERR)
 
     #approximate a poisson distribution with a Poisson distrubution mu=lambda sigma=sqrt(lambda)
-    n_gals = int( random.gauss(lmbda, math.sqrt(lmbda)) )
+    n_gals = gen_poisson(lmbda)
     loc_arr = np.zeros(shape=(5, n_gals)) #colunms are (RA, DEC, z, z_err) respectively
     print("Creating cluster with %d galaxies" % n_gals)
 
@@ -314,6 +337,54 @@ def gen_cluster(solid_angle, d_l, d_l_err):
         #for radial motion z ~ v/c
         loc_arr[3, i] = vel / C_L
         loc_arr[4, i] = Z_MEAS_ERR
+
+    return loc_arr
+
+def gen_clusters(solid_angle, d_l, d_l_err):
+    '''This is a more physically realistic model for how clusters are distributed. We appeal to the Schechter mass function to describe how the number of galaxies in a cluster is distributed with parameters taken from Hansen et al.
+    '''
+    r_min = max(d_l-d_l_err, MIN_GAL_DIST)
+    r_max = d_l+d_l_err
+
+    #there are a few different ways we can partition up the space, but we'll give the declanation a range between -asin(sqrt(omega)/4) and asin(sqrt(omega)/4) and the right ascension a range between -sqrt(omega) and sqrt(omega)
+    sqrt_omega = math.sqrt( soliddeg_to_solidrad(solid_angle) )
+    theta_r = math.asin(sqrt_omega/4)
+    phi_r = sqrt_omega
+    lmbda = CLUST_DENSITY*get_GW_event_vol(solid_angle, r_min, r_max)
+
+    n_clusters = gen_poisson(lmbda)
+    n_gals_arr = np.random.chisquare(CRIT_GAL_N, size=n_clusters)
+
+    #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
+    r_facts = np.random.uniform(0, 1.0, n_clusters)
+    vol_per_angle = (r_max**3 - r_min**3)
+    dist_clusts = np.cbrt(r_facts*vol_per_angle + r_min**3)
+
+    #colunms are (RA, DEC, z, z_err) respectively
+    loc_arr = [[] for i in range(5)]
+    print("Creating cluster with %d galaxies" % n_gals)
+
+    for dist, n_gals in zip(dist_clusts, n_gals_arr):
+        clust_phi = random.uniform(-phi_r, phi_r)
+        clust_theta = random.uniform(-theta_r, theta_r)
+
+        #The typical radius goes as a power law in the number of galaxies
+        r_200 = R_200_SCALE*(n_gals**R_SCALE_POW)
+        gals_cent_r = np.random.normal(0.0, r_200, n_gals)
+
+        #generate the (radial components) of peculiar velocity for each galaxy
+        pec_vels = np.random.normal(0.0, vel_sigma, n_gals)
+        #calculate corresponding redshifts for each galaxy
+        for i in range(n_gals):
+            #calculate the velocity using Hubble's law + peculiar motion
+            vel = H0_TRUE*r_gals[i] + pec_vels[i]
+            #store RA and DEC
+            loc_arr[0, i] = random.uniform(-phi_r, phi_r)
+            loc_arr[1, i] = random.uniform(-theta_r, theta_r)
+            loc_arr[2, i] = r_gals[i]
+            #for radial motion z ~ v/c
+            loc_arr[3, i] = vel / C_L
+            loc_arr[4, i] = Z_MEAS_ERR
 
     return loc_arr
 
