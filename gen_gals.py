@@ -397,12 +397,12 @@ def gen_clusters(solid_angle, d_l, d_l_err):
 
             #it is possible that a cluster galaxy isn't in the region of space we're interested in. We must check this
             if (ra > -phi_r and ra) < phi_r and (dec > -theta_r and dec < theta_r) and (r > r_min and r < r_max):
-                loc_arr[0, i] = ra*180/math.pi
-                loc_arr[1, i] = dec*180/math.pi
-                loc_arr[2, i] = r
+                loc_arr[0].append(ra*180/math.pi)
+                loc_arr[1].append(dec*180/math.pi)
+                loc_arr[2].append(r)
                 #for radial motion z ~ v/c
-                loc_arr[3, i] = vel / C_L
-                loc_arr[4, i] = Z_MEAS_ERR
+                loc_arr[3].append(vel / C_L)
+                loc_arr[4].append(Z_MEAS_ERR)
 
     return loc_arr
 
@@ -437,7 +437,7 @@ def make_samples(n_events):
         #TODO: uniformity on sky angle is almost certainly a highly unrealistic assumption
         solid_angle = ev[2]
 
-        locs = gen_clusters(solid_angle, dist, 2*dist_err)
+        locs = gen_cluster_uniform(solid_angle, dist, 2*dist_err)
         print("saving cluster to " + rshift_fname)
         #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
         with h5py.File(rshift_fname, 'w') as f:
