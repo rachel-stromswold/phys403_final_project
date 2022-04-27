@@ -12,6 +12,9 @@ DIR_NAME = 'sim_events'
 SKYLOC_SCALE = 1000
 MPC_PER_GPC = 1000
 
+POISSON_CUTOFF_LAMBDA = 20
+PI_BY_8_QUADROOT = (8 / math.pi)**0.25
+
 config = configparser.ConfigParser()
 config.read('params.conf')
 GW_HIST_FNAME = config['simulation']['GW_hist_fname']
@@ -20,6 +23,9 @@ H0_TRUE = float(config['simulation']['H_0_true'])
 C_L = float(config['physical']['light_speed'])
 CLUST_DENSITY = float(config['physical']['cluster_density'])
 GAL_DENSITY = float(config['physical']['galaxy_density'])
+CRIT_GAL_N = int(config['physical']['crit_n_gal'])
+R_200_SCALE = float(config['physical']['scale_const'])
+R_SCALE_POW = float(config['physical']['scale_pow'])
 GW_LOC_RANGE = [float(val) for val in config['simulation']['GW_dist_range'].split(sep=',')]
 GW_LOC_SCALE = float(config['simulation']['GW_dist_err_scale'])
 GW_DERR_SIG = float(config['simulation']['GW_dist_err_sig'])
@@ -237,12 +243,12 @@ def sample_GW_events(hist_fname, n_events):
     #sample data points. We scaled skylocations down, so we have to scale them back up
     samps = [(MPC_PER_GPC*s[0], MPC_PER_GPC*s[1], SKYLOC_SCALE*s[2]) for s in walk.get_samples_thin()]
     #make pretty pictures
-    '''
+    
     x_vals = [s[0] for s in samps]
     y_vals = [s[2] for s in samps]
     plt.scatter(x_vals, y_vals)
-    plt.scatter(dat[:,0], dat[:,2], color='orange')
-    plt.show()'''
+    plt.scatter(MPC_PER_GPC*dat[:,0], SKYLOC_SCALE*dat[:,2], color='orange')
+    plt.show()
     return samps[:n_events]
 
 def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_range, n_events):
@@ -274,7 +280,25 @@ def get_GW_event_vol(solid_angle, r_min, r_max):
     '''
     return solid_angle*( r_max**3 - r_min**3 ) / 3
 
-def gen_cluster(solid_angle, d_l, d_l_err):
+def gen_poisson(mean):
+    '''Sample from a Poisson distribution with mean lmbda
+    '''
+    #for small lambdas we sample from a Poisson distribution. Above a sufficiently large lambda, we take the distribution to be Gaussian
+    if mean < POISSON_CUTOFF_LAMBDA:
+        u = random.uniform(0.0, 1.0)
+
+        const = math.exp(-mean)
+        p_s = 0.0
+        n = 0
+        while True:
+            p_s += math.pow(mean, n)*const / math.factorial(n)
+            if p_s >= u:
+                return n
+            n += 1
+    else:
+        return int( random.gauss(mean, math.sqrt(mean)) )
+
+def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     '''Generate (part) of a galaxy cluster with an area parameterized by the solid angle of possible sky locations and an estimate on the luminosity distance d_l. The volume is taken by assuming that (d_l-d_l_err, d_l+d_l_err) describes some confidence interval for luminosity distance.
     '''
     r_min = max(d_l-d_l_err, MIN_GAL_DIST)
@@ -292,7 +316,7 @@ def gen_cluster(solid_angle, d_l, d_l_err):
         vel_sigma = random.gauss(VEL_DISP_MEAN, VEL_DISP_ERR)
 
     #approximate a poisson distribution with a Poisson distrubution mu=lambda sigma=sqrt(lambda)
-    n_gals = int( random.gauss(lmbda, math.sqrt(lmbda)) )
+    n_gals = gen_poisson(lmbda)
     loc_arr = np.zeros(shape=(5, n_gals)) #colunms are (RA, DEC, z, z_err) respectively
     print("Creating cluster with %d galaxies" % n_gals)
 
@@ -317,6 +341,71 @@ def gen_cluster(solid_angle, d_l, d_l_err):
 
     return loc_arr
 
+def gen_clusters(solid_angle, d_l, d_l_err):
+    '''This is a more physically realistic model for how clusters are distributed. We appeal to the Schechter mass function to describe how the number of galaxies in a cluster is distributed with parameters taken from Hansen et al.
+    '''
+    r_min = max(d_l-d_l_err, MIN_GAL_DIST)
+    r_max = d_l+d_l_err
+
+    #there are a few different ways we can partition up the space, but we'll give the declanation a range between -asin(sqrt(omega)/4) and asin(sqrt(omega)/4) and the right ascension a range between -sqrt(omega) and sqrt(omega)
+    sqrt_omega = math.sqrt( soliddeg_to_solidrad(solid_angle) )
+    theta_r = math.asin(sqrt_omega/4)
+    phi_r = sqrt_omega
+    lmbda = CLUST_DENSITY*get_GW_event_vol(solid_angle, r_min, r_max)
+
+    n_clusters = gen_poisson(lmbda)
+    n_gals_arr = np.random.chisquare(CRIT_GAL_N, size=n_clusters)
+
+    #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
+    r_facts = np.random.uniform(0, 1.0, n_clusters)
+    vol_per_angle = (r_max**3 - r_min**3)
+    dist_clusts = np.cbrt(r_facts*vol_per_angle + r_min**3)
+
+    #colunms are (RA, DEC, z, z_err) respectively
+    loc_arr = [[] for i in range(5)]
+    print("Creating space with %d clusters" % n_clusters)
+
+    for dist, n_gals_flt in zip(dist_clusts, n_gals_arr):
+        n_gals = int(n_gals_flt)
+        print("\tcreating cluster with %d galaxies" % n_gals)
+        clust_phi = random.uniform(-phi_r, phi_r)
+        clust_theta = random.uniform(-theta_r, theta_r)
+        #get the center of galaxy in Cartesian coordinates
+        x_cent = dist*math.sin(clust_theta)*math.cos(clust_phi)
+        y_cent = dist*math.sin(clust_theta)*math.sin(clust_phi)
+        z_cent = dist*math.cos(clust_theta)
+
+        #The typical radius goes as a power law in the number of galaxies. We take the distance of the galaxies to follow a three dimensional Gaussian about the center. From this we can derive that if velocities are Gaussian distributed, they should have mean 0 and variance r_200*sqrt(pi/2)
+        r_200 = R_200_SCALE*(n_gals**R_SCALE_POW)
+        gals_cent_r = np.random.normal(0, r_200, 3*n_gals)
+
+        #generate the (radial components) of peculiar velocity for each galaxy. We don't multiply by three because we only care about the radial component
+        pec_vels = np.random.normal(0.0, math.sqrt(r_200*PI_BY_8_QUADROOT), n_gals)
+        #calculate corresponding redshifts for each galaxy
+        for i in range(n_gals):
+            #get the location of the galaxy in absolute coordinates
+            x = x_cent + gals_cent_r[3*i]
+            y = y_cent + gals_cent_r[3*i+1]
+            z = z_cent + gals_cent_r[3*i+2]
+
+            #store RA and DEC
+            ra = math.atan2(y, x)
+            dec = math.pi/2 - math.atan2(z, x**2 + y**2)
+            r = math.sqrt(x**2 + y**2 + z**2)
+            #calculate the velocity using Hubble's law + peculiar motion. We only want the radial component, hence the factor 1/sqrt(3)
+            vel = H0_TRUE*r + pec_vels[i]
+
+            #it is possible that a cluster galaxy isn't in the region of space we're interested in. We must check this
+            if (ra > -phi_r and ra) < phi_r and (dec > -theta_r and dec < theta_r) and (r > r_min and r < r_max):
+                loc_arr[0, i] = ra*180/math.pi
+                loc_arr[1, i] = dec*180/math.pi
+                loc_arr[2, i] = r
+                #for radial motion z ~ v/c
+                loc_arr[3, i] = vel / C_L
+                loc_arr[4, i] = Z_MEAS_ERR
+
+    return loc_arr
+
 def trim_events(samples):
     '''Realistically, we wouldn't even bother performing analysis on events which have poor localizations. We thus find the best confined events (typically closer ones) and return only those.
     returns: the number of sufficiently confined samples and the total number of samples generated
@@ -324,7 +413,7 @@ def trim_events(samples):
     ret = []
     for i, s in enumerate(samples):
         #calculate the volume of the event. If it is below some threshold, then add it to the return array
-        vol = get_GW_event_vol(s[2], s[0]-s[1], s[0]+s[1])
+        vol = get_GW_event_vol(soliddeg_to_solidrad(s[2]), s[0]-s[1], s[0]+s[1])
         if vol < CONFINE_THRESHOLD:
             ret.append(s)
     return ret, len(samples)
@@ -348,10 +437,10 @@ def make_samples(n_events):
         #TODO: uniformity on sky angle is almost certainly a highly unrealistic assumption
         solid_angle = ev[2]
 
-        locs = gen_cluster(solid_angle, dist, 2*dist_err)
+        locs = gen_clusters(solid_angle, dist, 2*dist_err)
         print("saving cluster to " + rshift_fname)
         #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
-        with h5py.File(rshift_fname, 'w') as f:
+        '''with h5py.File(rshift_fname, 'w') as f:
             #write the distance information
             dist_post = f.create_group("distance_posterior")
             dset1 = dist_post.create_dataset("expectation", (1,), dtype='f')
@@ -369,6 +458,6 @@ def make_samples(n_events):
             rshift_grp['dec'] = np.array(locs[1])
             rshift_grp['r'] = np.array(locs[2])
             rshift_grp['z'] = np.array(locs[3])
-            rshift_grp['z_err'] = np.array(locs[4])
+            rshift_grp['z_err'] = np.array(locs[4])'''
 
 make_samples(100)
