@@ -1,3 +1,11 @@
-\section{Gravitational Wave measurement} \label{sec:develop}
+\section{Data} \label{sec:develop}
+
+Historic data is taken from merger catalogs from the second and third year of LIGO observations \cite{GWTC_2,GWTC_3}. Our analysis is only interested in the solid angle covered by sky localization, $\Omega$ and distances obtained from the GW data $d_L$ as well as their uncertainties, $\sigma_d$. These uncertainties are taken to be Gaussian. We marginalize over all other parameters to obtain a three dimensional probability distribution containing only these parameters of interest.
+
+We generate simulated events by estimating this probability distribution and performing MCMC sampling implemented in the emcee package. Details of the distribution estimation and sampling are given in appendix \ref{append_a}.
+
+After producing simulated GW events we need to select a suitable sky catalog. These data are also simulated by randomly sampling a number of galaxy clusters which are assumed not to interact with one another. The total mass of the cluster is assumed to follow a Press-Schechter mass distribution\cite{Press_1974}. Peculiar motions (which affects the measured redshift $z$) and distance from the center of mass are sampled such that the Virial theorem is obeyed, but other important factors like the very high concentrations of dark matter within clusters are neglected. More details on cluster generation are given in appendix \ref{append_b}.
     
-\subsection{\label{sec:level2} DATA description}
+\subsection{\label{Method} Methodology}
+
+

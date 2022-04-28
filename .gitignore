@@ -2,3 +2,9 @@ GW_events*
 sim_events*
 secret.txt
 __pycache__/
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.pdf

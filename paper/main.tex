@@ -2,7 +2,7 @@
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage[colorinlistoftodos, color=green!40, prependcaption]{todonotes}
-\input{preamble}
+%\input{preamble}
 \usepackage[pdftex, pdftitle={Article}, pdfauthor={Author}]{hyperref} % For hyperlinks in the PDF
 %\setlength{\marginparwidth}{2.5cm}
 %\usepackage{biblatex}
@@ -29,30 +29,14 @@ Abstract
 \input{sections/background.tex}  %I believe leaving the sections in separate files is more organized, change it if you desire 
 \input{sections/methodology.tex}
 \input{sections/results.tex}
-\input{sections/conclusion.tex}
-\input{sections/acknowledgements.tex}
-
-\begin{thebibliography}{4}
-\bibitem{Griffiths}
-D. J. Griffiths,
-\textit{Introduction to Electrodynamics}
-(Cambridge University Press, Cambridge, 2017).
-
-\bibitem{Plank2018}
-Aghanim, N., Akrami, Y., Ashdown, M., Aumont, J., Baccigalupi, C., Ballardini, M., Banday, A. J., Barreiro, R. B., Bartolo, N., Basak, S., Battye, R., Benabed, K., Bernard, J.-P., Bersanelli, M., Bielewicz, P., Bock, J. J., Bond, J. R., Borrill, J., Bouchet, F. R., … Zonca, A. (2020). Planck 2018 results. VI. Cosmological parameters. Astronomy &amp; Astrophysics, 641. https://doi.org/10.1051/0004-6361/201833910 .
-
-\bibitem{Feynman}
-R. P. Feynman, R. B. Leighton and M. Sands,
-\textit{Lições de Física de Feynman}
-(Editora Bookman, Porto Alegre, 2008).
-
-\bibitem{Jackson-CE}
-J. D. Jackson,
-\textit{Classical Electrodynamics}
-(John Wiley \& Sons, Danvers, 1999).
-\end{thebibliography}
+\input{sections/conclusions.tex}
+%\input{sections/acknowledgements.tex}
 
 \appendix*
-\input{sections/appendix1.tex}
 
+\section{\label{append_a} Appendix}
+\section{\label{append_b} Appendix}
+%\input{sections/appendix1.tex}
+
+\bibliography{citations}
 \end{document}
