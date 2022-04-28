@@ -49,16 +49,8 @@ def integrand_em(z_i, z_mu, z_err_sq, h_0):
     gw_dist_var: variance of GW distance
     h_0: Hubble's constant
     '''
-    #we need to marginalize over dzi and solid angles (see Soares-Santos et al)
-    c_z = C_L*z_i
-    try:
-        dV = c_z*c_z / (h_0*h_0*h_0*math.sqrt(OMEGA_M*(1+z_i)**3 + OMEGA_A))
-    except ValueError:
-        dV = 1
-    dV = 1
-    #compute marginal posteriors on the GW data and EM data
     marg_em = math.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
-    return marg_em*dV
+    return marg_em
 
 def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
     '''integrand for Bayes' theorem
