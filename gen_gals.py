@@ -435,7 +435,7 @@ def gen_clusters(solid_angle, d_l, d_l_err):
             vel = H0_TRUE*r + pec_vels[i]
 
             #it is possible that a cluster galaxy isn't in the region of space we're interested in. We must check this
-            if (ra > -phi_r and ra) < phi_r and (dec > -theta_r and dec < theta_r) and (r > r_min and r < r_max):
+            if (ra > -phi_r and ra < phi_r) and (dec > -theta_r and dec < theta_r) and (r > r_min and r < r_max):
                 loc_arr[0].append(ra*180/math.pi)
                 loc_arr[1].append(dec*180/math.pi)
                 loc_arr[2].append(r)

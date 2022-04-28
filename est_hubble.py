@@ -14,6 +14,8 @@ import multiprocessing as mp
 N_CORES = mp.cpu_count()
 #np.seterr(all='raise')
 
+MAX_Z_PROC_SIZE = 500
+
 #read configuration
 config = configparser.ConfigParser()
 config.read('params.conf')
@@ -29,12 +31,15 @@ if len(PRIOR_RANGE) != 2:
 if len(EVENT_LIST) == 0:
     raise ValueError("At least one event must be supplied.")
 
+N_H0 = 250
+
 #override configuration file with command line arguments if supplied
 parser = argparse.ArgumentParser(description='Estimate the Hubble constant based on a GW event volume and a corresponding skymap.')
 parser.add_argument('--type', type=str, nargs='?', help='Type of events to sample. Accepcted values are GW_events for real events and sim_events for simulated events. Defaults to {}.'.format(SAMPLE_TYPE), default=SAMPLE_TYPE)
 parser.add_argument('--n-events-use', type=int, default=len(EVENT_LIST), help='Number of events to use in the Hubble constant estimation. Must be <= the number of events available.')
 parser.add_argument('--save-intervals', type=str, help='Print the confidence intervals.')
 parser.add_argument('--n-cores-max', type=int, default=N_CORES, help='Maximum number of cores to use. Otherwise computer get angry >:{')
+parser.add_argument('--save-pdf', type=str, help='Location to save the PDFs')
 args = parser.parse_args()
 SAMPLE_TYPE = args.type
 N_CORES = min(args.n_cores_max, N_CORES)
@@ -49,7 +54,7 @@ def integrand_em(z_i, z_mu, z_err_sq, h_0):
     gw_dist_var: variance of GW distance
     h_0: Hubble's constant
     '''
-    marg_em = math.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
+    marg_em = np.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
     return marg_em
 
 def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
@@ -65,12 +70,13 @@ def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
     #we need to marginalize over dzi and solid angles (see Soares-Santos et al)
     c_z = C_L*z_i
     try:
-        dV = c_z*c_z / (h_0*h_0*h_0*math.sqrt(OMEGA_M*(1+z_i)**3 + OMEGA_A))
+        dV = c_z*c_z / (h_0*h_0*h_0*np.sqrt(OMEGA_M*(1+z_i)**3 + OMEGA_A))
     except ValueError:
         dV = 1
     #compute marginal posteriors on the GW data and EM data
-    marg_gw = math.exp( (h_0*gw_dist_mu - c_z)*(c_z - h_0*gw_dist_mu) / (2*gw_dist_mu*h_0*h_0) )
-    marg_em = math.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
+    marg_gw = np.exp( (h_0*gw_dist_mu - c_z)*(c_z - h_0*gw_dist_mu) / (2*gw_dist_var*h_0*h_0) )
+    marg_em = np.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
+
     return marg_gw*marg_em*dV
 
 def p_part_gals(z, z_err, h_vals, z_min, z_max, gw_dist_mu, gw_dist_var):
@@ -84,23 +90,24 @@ def p_part_gals(z, z_err, h_vals, z_min, z_max, gw_dist_mu, gw_dist_var):
     gw_dist_var: variance of GW distance
     returns: the probability distribution for H_0 considering only the current set of galaxies
     '''
-    part_pdf = np.zeros(len(h_vals))
-    for mu_z, sig_z in zip(z, z_err): 
-        var_z = sig_z*sig_z #error on the redshift of galaxy i
-        #some galaxies have zero catalogued redshift and error, we ignore these to avoid divisions by zero
-        if var_z > 0:
-            #iterate over the hubble constant prior
-            for i, h in enumerate(h_vals):
-                #integrate over possible redshifts
-                p_em = integrate.quad( integrand_em, z_min, z_max, args=(mu_z, var_z, h) )[0]
-                p_gw = integrate.quad( integrand, z_min, z_max, args=(mu_z, var_z, h, gw_dist_mu, gw_dist_var) )[0]
-                part_pdf[i] += p_gw/(sig_z*p_em)
-    return part_pdf
+    mu_z = np.array(z)
+    var_z = np.array(z_err)**2
+    mu_z = mu_z[var_z > 0.]
+    var_z = var_z[var_z > 0.]
+    h = np.array(h_vals)
+    z = np.linspace(z_min, z_max, 100)
+    dz = z[1] - z[0]
+
+    _, _, var_z = np.meshgrid(h, z, var_z)
+    h, z, mu_z = np.meshgrid(h, z, mu_z)
+    p_em = np.sum(np.sum(np.sqrt(var_z) * integrand_em(z, mu_z, var_z, h), axis=2), axis=0) * dz
+    p_gw = np.sum(np.sum(integrand(z, mu_z, var_z, h, gw_dist_mu, gw_dist_var), axis=2), axis=0) * dz
+    return p_gw / p_em
 
 class Posterior_PDF:
     '''A utility class which stores a posterior pdf for a fixed vm and arbitrary distribution for H_0. The prior distribution for d is always assumed to be uniform.
     '''
-    def __init__(self, h_range, num=50):
+    def __init__(self, h_range, num=N_H0):
         '''Generates a posterior pdf for the Hubble data using the observed data vm and vm_err and the prior distribution for d
         h_range: a tuple specifying the range of values which H_0 may assume. We take this as a uniform prior
         num: number of values of d to sample when generating the pdf
@@ -108,6 +115,7 @@ class Posterior_PDF:
         self.h_list = np.linspace(h_range[0], h_range[1], num=num)
         self.h_space = (h_range[1] - h_range[0]) / num
         self.p_list = np.ones(len(self.h_list))
+        self.p_list_current = None
 
     def guess_index(self, h):
         '''Helper function which finds the index in h_list which has the value closest to x assuming that lst is increasing'''
@@ -252,17 +260,27 @@ class Posterior_PDF:
 
         #we need to convert the two separate arrays for z and z_err into an array of arguments passed to p_one_gal.
         # ;)
-        arg_list = [([z for z in rshifts['z'][i*(bsiz+1)+(rem-i)*((i-rem+N_CORES)//N_CORES):(i+1)*bsiz+i+1+(rem-i-1)*((i-rem+N_CORES)//N_CORES)]], [z for z in rshifts['z_err'][i*(bsiz+1)+(rem-i)*((i-rem+N_CORES)//N_CORES):(i+1)*bsiz+i+1+(rem-i-1)*((i-rem+N_CORES)//N_CORES)]], self.h_list, z_min, z_max, gw_dist_mu, gw_dist_var) for i in range(N_CORES)]
+        #arg_list = [([z for z in rshifts['z'][i*(bsiz+1)+(rem-i)*((i-rem+N_CORES)//N_CORES):(i+1)*bsiz+i+1+(rem-i-1)*((i-rem+N_CORES)//N_CORES)]], [z for z in rshifts['z_err'][i*(bsiz+1)+(rem-i)*((i-rem+N_CORES)//N_CORES):(i+1)*bsiz+i+1+(rem-i-1)*((i-rem+N_CORES)//N_CORES)]], self.h_list, z_min, z_max, gw_dist_mu, gw_dist_var) for i in range(N_CORES)]
+
+        num_sections = rshifts['z'].size // MAX_Z_PROC_SIZE + 1
+        zs = np.array_split(rshifts['z'], num_sections)
+        zs_err = np.array_split(rshifts['z_err'], num_sections)
+        arg_list = [(zs[i], zs_err[i],  self.h_list, z_min, z_max, gw_dist_mu, gw_dist_var) for i in range(len(zs))]
 
         #create a temporary pdf for this event. We need to take the product over multiple events to get the final result
         tmp_pdf = np.zeros(len(self.p_list))
-        pool = mp.Pool(processes=N_CORES)
-        res = pool.starmap(p_part_gals, arg_list)
+        if N_CORES > 1:
+            pool = mp.Pool(processes=N_CORES)
+            res = pool.starmap(p_part_gals, arg_list)
+        else:
+            res = [p_part_gals(*arg_list[0])]
 
         #sum together each result from the pool
         for r in res:
             for i in range(len(tmp_pdf)):
                 tmp_pdf[i] += r[i]
+
+        self.p_list_current = tmp_pdf
 
         #move the new data into the pdf
         self.p_list = tmp_pdf*self.p_list
@@ -273,10 +291,14 @@ pdf = Posterior_PDF(PRIOR_RANGE)
 if args.save_intervals is not None:
     ci_array = np.empty((args.n_events_use, 6))
 
+pdf_array = np.empty((args.n_events_use, N_H0))
+
 for i, ev in enumerate(EVENT_LIST[:args.n_events_use]):
     #load the list of potential galaxies
     rshift_fname = SAMPLE_TYPE + '/' + ev + '_rshifts.h5'
     pdf.add_event(rshift_fname)
+
+    pdf_array[i] = pdf.p_list_current
     
     if args.save_intervals is not None:
         ci_array[i,0:2] = pdf.find_confidence(0.68)[:2]
@@ -285,6 +307,9 @@ for i, ev in enumerate(EVENT_LIST[:args.n_events_use]):
 
 if args.save_intervals is not None:
     np.savetxt(args.save_intervals, ci_array, header="0.68 lower, 0.68 upper, 0.95 lower, 0.95 upper, 0.997 lower, 0.997 upper")
+
+if args.save_pdf is not None:
+    np.savetxt(args.save_pdf, pdf_array)
 
 plt.plot(pdf.h_list, pdf.p_list)
 plt.xlabel(r'$H_0$ km s$^{-1}$ Mpc$^{-1}$')
