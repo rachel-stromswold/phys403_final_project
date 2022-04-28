@@ -8,4 +8,46 @@ After producing simulated GW events we need to select a suitable sky catalog. Th
     
 %\subsection{\label{Method} Methodology}
 
+Different from standard sirens, dark sirens do not provide the identification of the host galaxy to measure the redshift, instead the redshift should be estimated by marginalization throughout potential host galaxy candidates in a Bayesian Framework (Fishbach et al.2018)\cite{Fishbach_2019}. The posterior can be written using Bayes' theorem. 
+\ref{eq:posterior}: 
+\begin{equation}
+    p(H_0|d_{GW}, d_{EM})\propto p(d_{GW}, d_{EM}|H_0)p(H_0)
+    \label{eq:posterior}
+\end{equation}
 
+Because the process involved in producing the data from the two experiments are independent, we treat the joint GW and EM likelihood $p(d_{GW},d{EM}|H_0)$ as the product of two individual likelihoods marginalized over all variables except the true luminosity distance dL and solid angle $\Omega_{GW}$ of the GW source, and the true host galaxy redshift $z_i$ and solid angle $\hat{\Omega_i}$. Suppose the event occurred in one of the observable galaxies i, then $ \hat{\Omega_{GW}}$ and $\hat{\Omega_i}$  as well as $d_L$ and $z_i$ are related. By marginalizing over the choice of galaxy i, the joint, marginal likelihood can be written as \ref{eq:marginal_like}\footnote{$w_i$ is the weight of probability of galaxies being the source of GW}: 
+%\begin{widetext}
+\begin{align}
+    p(&d_{GW}, d_{EM}|{z_j, \hat{\Omega_j}},H_0)  \propto  \nonumber\\
+    &\sum_{i} w_i \int d\,z_i d \hat{\Omega_{GW}} p(d_{GW}|d_L, \hat{\Omega_{GW}}) 
+    p(d_{EM}|{z_,, \hat{\Omega_j}}) \nonumber\\
+    & \delta_D (d_L - d_L(z_i, H_0)) \delta_D (\hat{\Omega_{GW}} - \hat{\Omega_i})
+    \label{eq:marginal_like}
+\end{align}
+%\end{widetext}
+With a suitable choice of prior $p(z_i, i)$, we must also marginalize across the galaxy's redshift and sky positions. The artificially generated galaxies samples are evenly distributed in the comoving volume $V$, then we get:
+
+\begin{equation}
+    p(z_i, \hat{\Omega_i})dz_i d\hat{\Omega_i} \propto \frac{d^2 V}{dz_i d\hat{\Omega_i}} dz_i d\hat{\Omega_i} \propto \frac{r^2 (z_i)}{H(z_i)}dz_i d\hat{\Omega_i}
+\end{equation}
+
+We can integrate over the galaxies’ positions as delta functions about the observed values if we know the galaxies’ position j exactly. For simplicity, we approximate the marginal EM probability by a product of Gaussian distributions, N, for each galaxy, centred around the overseeable redshift values $z_{obs,i}$ with a breath determined by the redshift’s uncertainty $sigma_{z_i}$ for each galaxy i:
+\begin{equation}
+    p(d_{EM}|{z_j}) = \prod_i p(z_{obs,i}|z_i) = \prod_i \mathcal{N}(z_{obs,i},\,\sigma_{z,i};z_i)
+\end{equation}
+
+
+The marginal GW likelihood $p(d_{GW}|d_L,\Omega)$ can be calculated using Singer's formula:
+\begin{equation}
+    p(d_{GW}|d_L, \hat{\Omega})\propto p(\hat{\Omega})\frac{1}{\sqrt{2\pi}\sigma(\hat{\Omega})} \exp[-\frac{(d_L - \mu(\hat{\Omega}))^2}{2\sigma^2(\hat{\Omega})}] N(\hat{\Omega})
+    \label{eq:GW_like}
+\end{equation}
+
+Since the generated data does note need the error correction of the GW missing part.  The final equation of \ref{eq:posterior}which included the evidence term should become:
+\begin{widetext}
+\begin{equation}
+     p(H_0|d_{GW}, d_{EM})\propto p(H_0) \sum_i \frac{1}{Z_i}\int dz_i p(d_{GW}|d_L(z_i, H_0), \hat{\Omega_{i}})p(d_{EM}|z_i)\frac{r^2 (z_i)}{H(z_i)}
+    \label{eq: finaleq}
+\end{equation}
+\end{widetext}
+To estimate confirmation bias, a blined approach can be used to estimate the $H_0$ posterior from the data. We unblined after our pipeline was able to dependably reproduce the input cosmology on simulation testing, and the values of the Hubble constant were arbitrarily moved by unknown amount. 
