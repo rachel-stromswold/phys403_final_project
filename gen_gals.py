@@ -318,7 +318,6 @@ def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     #approximate a poisson distribution with a Poisson distrubution mu=lambda sigma=sqrt(lambda)
     n_gals = gen_poisson(lmbda)
     loc_arr = np.zeros(shape=(5, n_gals)) #colunms are (RA, DEC, z, z_err) respectively
-    print("Creating cluster with %d galaxies" % n_gals)
 
     #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
     r_facts = np.random.uniform(0, 1.0, n_gals)
@@ -369,7 +368,6 @@ def gen_clusters(solid_angle, d_l, d_l_err):
 
     for dist, n_gals_flt in zip(dist_clusts, n_gals_arr):
         n_gals = int(n_gals_flt)
-        print("\tcreating cluster with %d galaxies" % n_gals)
         clust_phi = random.uniform(-phi_r, phi_r)
         clust_theta = random.uniform(-theta_r, theta_r)
         #get the center of galaxy in Cartesian coordinates
@@ -442,7 +440,7 @@ def make_samples(n_events):
         locs = gen_clusters(solid_angle, dist, 2*dist_err)
         print("saving cluster to " + rshift_fname)
         #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
-        '''with h5py.File(rshift_fname, 'w') as f:
+        with h5py.File(rshift_fname, 'w') as f:
             #write the distance information
             dist_post = f.create_group("distance_posterior")
             dset1 = dist_post.create_dataset("expectation", (1,), dtype='f')
@@ -460,6 +458,6 @@ def make_samples(n_events):
             rshift_grp['dec'] = np.array(locs[1])
             rshift_grp['r'] = np.array(locs[2])
             rshift_grp['z'] = np.array(locs[3])
-            rshift_grp['z_err'] = np.array(locs[4])'''
+            rshift_grp['z_err'] = np.array(locs[4])
 
-make_samples(10)
+make_samples(50)

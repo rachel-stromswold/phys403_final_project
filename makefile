@@ -1,6 +1,6 @@
 simulate_plot_CI: generate_events plot_data
-	python3 est_hubble.py --type sim_events --save-intervals plot_data/intervals.txt --n-cores-max 10
-	python3 plot_intervals.py --interval-file plot_data intervals.txt --plot-fname plot_data/intervals.pdf
+	python3 est_hubble.py --type sim_events --save-intervals plot_data/intervals.txt --n-cores-max 10 --save-pdf plot_data/posterior.txt
+	python3 plot_intervals.py --interval-file plot_data/intervals.txt --plot-fname plot_data/intervals.pdf
 
 simulate: generate_events
 	python3 est_hubble.py --type sim_events
