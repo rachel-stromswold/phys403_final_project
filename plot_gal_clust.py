@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 #read the file name from argv
 parser = argparse.ArgumentParser(description='Plot a galaxy cluster for visualization and debugging purposes.')
-parser.add_argument('fname', type=str, help='Hdf5 file specifying saved locations.')
+parser.add_argument('--fname', type=str, help='Hdf5 file specifying saved locations.')
 args = parser.parse_args()
 
 #read the hubble constant from the configuration file

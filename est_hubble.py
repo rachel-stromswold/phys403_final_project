@@ -76,6 +76,7 @@ def integrand(z_i, z_mu, z_err_sq, h_0, gw_dist_mu, gw_dist_var):
     #compute marginal posteriors on the GW data and EM data
     marg_gw = np.exp( (h_0*gw_dist_mu - c_z)*(c_z - h_0*gw_dist_mu) / (2*gw_dist_var*h_0*h_0) )
     marg_em = np.exp( (z_i - z_mu)*(z_mu - z_i) / (2*z_err_sq) )
+
     return marg_gw*marg_em*dV
 
 def p_part_gals(z, z_err, h_vals, z_min, z_max, gw_dist_mu, gw_dist_var):
