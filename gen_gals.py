@@ -244,11 +244,11 @@ def sample_GW_events(hist_fname, n_events):
     samps = [(MPC_PER_GPC*s[0], MPC_PER_GPC*s[1], SKYLOC_SCALE*s[2]) for s in walk.get_samples_thin()]
     #make pretty pictures
     
-    x_vals = [s[0] for s in samps]
+    '''x_vals = [s[0] for s in samps]
     y_vals = [s[2] for s in samps]
     plt.scatter(x_vals, y_vals)
     plt.scatter(MPC_PER_GPC*dat[:,0], SKYLOC_SCALE*dat[:,2], color='orange')
-    plt.show()
+    plt.show()'''
     return samps[:n_events]
 
 def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_range, n_events):
@@ -308,7 +308,7 @@ def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     sqrt_omega = math.sqrt( soliddeg_to_solidrad(solid_angle) )
     theta_r = math.asin(sqrt_omega/4)
     phi_r = sqrt_omega
-    lmbda = GAL_DENSITY*get_GW_event_vol(solid_angle, r_min, r_max)
+    lmbda = GAL_DENSITY*get_GW_event_vol( soliddeg_to_solidrad(solid_angle), r_min, r_max )
 
     #comoving velocity dispersion for this particular cluster. We want to make sure this is positive, although negative values have roughly 0.3% chance to occur
     vel_sigma = -1.0
@@ -344,6 +344,9 @@ def gen_cluster_uniform(solid_angle, d_l, d_l_err):
 def gen_clusters(solid_angle, d_l, d_l_err):
     '''This is a more physically realistic model for how clusters are distributed. We appeal to the Schechter mass function to describe how the number of galaxies in a cluster is distributed with parameters taken from Hansen et al.
     '''
+    #colunms are (RA, DEC, z, z_err) respectively
+    loc_arr = [[] for i in range(5)]
+
     r_min = max(d_l-d_l_err, MIN_GAL_DIST)
     r_max = d_l+d_l_err
 
@@ -351,9 +354,10 @@ def gen_clusters(solid_angle, d_l, d_l_err):
     sqrt_omega = math.sqrt( soliddeg_to_solidrad(solid_angle) )
     theta_r = math.asin(sqrt_omega/4)
     phi_r = sqrt_omega
-    lmbda = CLUST_DENSITY*get_GW_event_vol(solid_angle, r_min, r_max)
+    lmbda = CLUST_DENSITY*get_GW_event_vol(soliddeg_to_solidrad(solid_angle), r_min, r_max)
 
     n_clusters = gen_poisson(lmbda)
+    print("lmbda = {}".format(lmbda))
     n_gals_arr = np.random.chisquare(CRIT_GAL_N, size=n_clusters)
 
     #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
@@ -361,8 +365,6 @@ def gen_clusters(solid_angle, d_l, d_l_err):
     vol_per_angle = (r_max**3 - r_min**3)
     dist_clusts = np.cbrt(r_facts*vol_per_angle + r_min**3)
 
-    #colunms are (RA, DEC, z, z_err) respectively
-    loc_arr = [[] for i in range(5)]
     print("Creating space with %d clusters" % n_clusters)
 
     for dist, n_gals_flt in zip(dist_clusts, n_gals_arr):
@@ -437,10 +439,10 @@ def make_samples(n_events):
         #TODO: uniformity on sky angle is almost certainly a highly unrealistic assumption
         solid_angle = ev[2]
 
-        locs = gen_cluster_uniform(solid_angle, dist, 2*dist_err)
+        locs = gen_clusters(solid_angle, dist, 2*dist_err)
         print("saving cluster to " + rshift_fname)
         #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
-        with h5py.File(rshift_fname, 'w') as f:
+        '''with h5py.File(rshift_fname, 'w') as f:
             #write the distance information
             dist_post = f.create_group("distance_posterior")
             dset1 = dist_post.create_dataset("expectation", (1,), dtype='f')
@@ -458,6 +460,6 @@ def make_samples(n_events):
             rshift_grp['dec'] = np.array(locs[1])
             rshift_grp['r'] = np.array(locs[2])
             rshift_grp['z'] = np.array(locs[3])
-            rshift_grp['z_err'] = np.array(locs[4])
+            rshift_grp['z_err'] = np.array(locs[4])'''
 
-make_samples(100)
+make_samples(10)
