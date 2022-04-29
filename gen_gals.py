@@ -302,4 +302,4 @@ def make_samples(n_events):
             rshift_grp['z'] = np.array(locs[3])
             rshift_grp['z_err'] = np.array(locs[4])
 
-make_samples(50)
+make_samples(100)
