@@ -19,7 +19,7 @@ SKYLOC_SCALE = 1000
 MPC_PER_GPC = 1000
 
 POISSON_CUTOFF_LAMBDA = 20
-PI_BY_8_QUADROOT = (8 / math.pi)**0.25
+PI_BY_8_QUADROOT = (2 / math.pi)**0.25
 
 config = configparser.ConfigParser()
 config.read('params.conf')
