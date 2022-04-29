@@ -37,7 +37,6 @@ N_H0 = 250
 parser = argparse.ArgumentParser(description='Estimate the Hubble constant based on a GW event volume and a corresponding skymap.')
 parser.add_argument('--type', type=str, nargs='?', help='Type of events to sample. Accepcted values are GW_events for real events and sim_events for simulated events. Defaults to {}.'.format(SAMPLE_TYPE), default=SAMPLE_TYPE)
 parser.add_argument('--n-events-use', type=int, default=len(EVENT_LIST), help='Number of events to use in the Hubble constant estimation. Must be <= the number of events available.')
-parser.add_argument('--save-intervals', type=str, help='Print the confidence intervals.')
 parser.add_argument('--n-cores-max', type=int, default=N_CORES, help='Maximum number of cores to use. Otherwise computer get angry >:{')
 parser.add_argument('--save-pdf', type=str, help='Location to save the PDFs')
 args = parser.parse_args()
@@ -226,6 +225,28 @@ class Posterior_PDF:
 
         return find_interval_iter(center_val/2, 0, center_val, 0)
 
+    def find_confidence_alt(self, conf, tolerance=0.01, max_iters=20):
+        from scipy.interpolate import interp1d
+        self.normalize()
+        index_peak = np.argmax(self.p_list)
+        f_left = interp1d(self.p_list[:index_peak], self.h_list[:index_peak])
+        f_right = interp1d(self.p_list[index_peak:], self.h_list[index_peak:])
+        p_upper = self.p_list[index_peak]
+        p_lower = 0.
+        p = 0.5 * (p_upper + p_lower)
+        iters = 0
+        while True:
+            diff = self.integrate(f_left(p), f_right(p)) - conf
+            if np.abs(diff) < tolerance or iters > max_iters:
+                break
+            if diff < 0:
+                p_upper = p
+                p = 0.5 * (p + p_lower)
+            else:
+                p_lower = p
+                p = 0.5 * (p + p_upper)
+        return f_left(p), f_right(p)
+
     def normalize(self):
         '''given a pdf with the specified support (taken to be a subset of R), return its normalized value. The support is unaltered.
         '''
@@ -288,25 +309,14 @@ class Posterior_PDF:
 
 pdf = Posterior_PDF(PRIOR_RANGE)
 
-if args.save_intervals is not None:
-    ci_array = np.empty((args.n_events_use, 6))
-
 pdf_array = np.empty((args.n_events_use, N_H0))
 
 for i, ev in enumerate(EVENT_LIST[:args.n_events_use]):
     #load the list of potential galaxies
     rshift_fname = SAMPLE_TYPE + '/' + ev + '_rshifts.h5'
     pdf.add_event(rshift_fname)
-
+    pdf.normalize()
     pdf_array[i] = pdf.p_list_current
-    
-    if args.save_intervals is not None:
-        ci_array[i,0:2] = pdf.find_confidence(0.68)[:2]
-        ci_array[i,2:4] = pdf.find_confidence(0.95)[:2]
-        ci_array[i,4:6] = pdf.find_confidence(0.997)[:2]
-
-if args.save_intervals is not None:
-    np.savetxt(args.save_intervals, ci_array, header="0.68 lower, 0.68 upper, 0.95 lower, 0.95 upper, 0.997 lower, 0.997 upper")
 
 if args.save_pdf is not None:
     np.savetxt(args.save_pdf, pdf_array)
