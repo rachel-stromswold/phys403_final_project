@@ -209,7 +209,7 @@ def gen_clusters(solid_angle, d_l, d_l_err):
     z_cents = dist_clusts*np.cos(clust_thetas)
 
     #we need to make sure there is a host event near the center of the confidence interval, we'll make this a gaussian. To get a rough estimate of its width, we'll make it a two sigma event for the galaxy to be outside of our interval. If we consider our volume to be a sphere then we should make sigma=(3V/4)^{1/3}/2
-    host_loc = np.random.normal(0.0, 0.5*(0.75*vol)**(1/3), 3)
+    host_loc = np.random.normal(0.0, 0.5*(0.75*vol/math.pi)**(1/3), 3)
     x_cents[0] = host_loc[0] + d_l #the center of the distribution is on the x axis
     y_cents[0] = host_loc[1]
     z_cents[0] = host_loc[2]
