@@ -306,4 +306,4 @@ def make_samples(n_events):
             rshift_grp['z_err'] = np.array(locs[4])
     print( "{} out of {} ({} %) events were sufficiently localized".format(len(events), total_n_events, 100*len(events)/total_n_events) )
 
-make_samples(50)
+make_samples(100)
