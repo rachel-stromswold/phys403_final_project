@@ -1,46 +1,71 @@
-\section{\label{sec:motiv}Motivation}
-Nowadays, the theory that our universe is consistently expanding has been widely accepted. The factor that represents the rate of its expansion was first introduced by Edwin Hubble by stating the fact that galaxies with larger distances from earth move faster away with higher speed, which is now what we call the Hubble Constant $H_0$ \cite{Hubble_1929}. 
-
- Uncertainties in the physical assumptions used to calculate these distances have resulted in differing Hubble constant estimations. Initially, Hubble’s calculations give roughly $500$ \si{km.s^{-1}.Mpc^{-1}} by simply calculating the ratio between velocity and distance\cite{Hubble_1929}. With progressively elaborating the measurement methods, the current $H_0$ value is gradually stabilized at approximately $70$ \si{km.s^{-1}.Mpc^{-1}}.
-
-However, different measurement approaches lead to diverse $H_0$ values. The estimated measurement uncertainties have diminished as procedures have improved, but the range of measured values has not, to the point that the disagreement is now exceptionally statistically significant.
-
-Two dominant approaches give different values, which leads to the data “in tension”. The first method uses low redshift measurements of standard candles (footnote explaining SC), type Ia Supernovae in the measurements for $H_0$. Through this method, $H_0$  $74.03 \pm 1.42$ \si{km.s^{-1}.Mpc^{-1}}\cite{Riess_2019}.
-
-Another approach from the high redshift measurements of CMB (cosmic microwave background) gives the newest $H_0$ value about $67.36 \pm 0.56km/s/Mpc$.\cite{Planck_2018}. These two measurements give a significant discrepancy, larger than $4 \sigma$, with each other, and such a discrepancy cannot be omitted via statistical explanation.
-
-%\begin{figure}
-%    \centering
-%    \includegraphics[scale=0.55]{sections/H0whisker.JPG}
-%    \caption{History $H_0$ in tension}
-%    \label{fig:hist_h0}
-%\end{figure}
-
-\paragraph{Low redshift ($z \leq 10$) measurement}
-
-The $H_0$ is calculated locally by measuring the redshift of distant galaxies and then using a particular method to calculate their distances which is part of the cosmic distance ladder.
-The redshift can be easily measured, and the distances can be measured locally by getting the distance from the standard candle techniques, including the Type Ia Supernovae and Cepheid variables.
- \footnote{Astronomers use a “standard candle” to measure distances that are too vast to be measured using parallax. Because the light is spread out over a larger region, distant light sources appear fainter.}
-
-Tamara et. al gives a statement that even small systematic errors in redshift will result in a significant impact on $H_0$ measurements (2019)\cite{Davis_2019}; however, only considering those errors are not quite enough to resolve the $H_0$ tension people encountered. The research calculation results remain stable with constantly decreasing the error bar, as shown in the figure, except for the results obtained by Freedman et. al. in 2019 shows the relatively low $H_0$ value falls in $69.8 \pm 1.88$ \si{km.s^{-1}.Mpc^{-1}}\cite{Freedman_2019}. Instead of using Cepheid variables, they use the calibration of Tip of the Red Giant Branch(TRGB), which is parallel to but independent from the former one. TRGB samples have higher mass and less sensitivity to the metallicity, so that the potential systematic error in measurement has decreased.
-
-\paragraph{High redshift ($z \geq 10$) measurement}
-
-$H_0$ can be calculated using CMB temperature changes. Several characteristics, like the ratio of baryonic to dark matter and $H_0$, influence the specific shape of the curve (known as the acoustic power spectrum). The angular diameter distance to the last scattering surface is used to calculate $H_0$. That isn’t a direct observable; instead, trigonometry is used to infer it. The angular scale of the Baryon Acoustic Oscillations in the CMB may be directly measured, it’s the distance between troughs in the power spectrum is shown below.
-
-The temperature power spectrum is what is being used to determine the $H_0$. This is a way of looking at the ripples in the temperature field which encode the amount of dark and baryonic matter present, as well as the cosmological constant and other cosmological parameters.
-\footnote{All the parameters are simultaneously constrained with respect to each other using MCMC or other "fitting" approaches. }
-
-There are two possible systematic errors that are commonly seen. When we use two different likelihood pipelines for the data at certain multipoles, with different parameters used for the calibration efficiencies, it has little effect in reducing the Hubble tension \cite{Efstathiou_2021}. Therefore, the choice of likelihood will result in systematic errors. 
-The second is the systematic error that can occur in the lensing parameter\cite{Calabrese_2008}. The lensing parameter simply rescales by hand the effects of gravitational lensing on the CMB angular power spectra and can be measured by the smoothing of the peaks in the damping tail. This lensing anomaly is not seen in the
-Planck trispectrum data \footnote{CMB lensing} that offer a complementary and independent measurement. If there is no new physics in it, the alternative explanation could be due to a small but still undetected systematic error in the Planck data which can be used to reduce the Hubble Tension.
-
 \section{\label{sec:intro} Introduction}
-In this paper we consider dark siren measurements which do not have a known electromagnetic counterpart. This is relevant for binary black hole hole mergers which are not expected to have observable EM counterparts but occur much more frequently than events with EM counterparts. As of writing, GW170817 is the only event known neutron start merger with an identified EM counterpart \cite{GW170817_announce}.
 
-As early as 1986 it was proposed that an array of multiple gravitational wave detectors could be used to estimate the distance to an event $d_L$ and bounds on sky location\cite{Schutz_1986}. These estimates can then be used to prouce a catalog of candidate host galaxies from existing sky surveys. Based on the posterior distributions for these localizations, we use a method for measuring $H_0$ layed out by Nair et al\cite{Nair_2018}. It has been predicted that these methods can confine the Hubble constant within the decade \cite{Chen_2018}. This technique was applied to the event GW170814 by collaborators from the LIGO and Virgo teams using results from the Dark Energy Survey of the southern sky\cite{GW170814_DES}. We carry out a similar analysis on simulated data sets based on historic GW data and simple physical assumptions for the distribution of galaxies within clusters.
+Hubble's law, the observation that galaxies are moving away from the Earth at a velocity proportional to their distance from the Earth, has been widely accepted since it was first proposed in the 1920s \cite{Hubble_1929}.
+The constant of proportionality in this relationship is known as the Hubble parameter $H$.
+The Hubble parameter in general changes with time, and therefore with redshift $z$; the current value of the Hubble parameter is the Hubble constant $H_0$.
+For objects relatively close to the Earth (i.e. those at low redshift), the redshift is related to the distance $d$ by \cite{Freedman_2010}
+\[
+    c z = H_0 d.
+\]
+
+Variations in the physical assumptions underlying calculations of the Hubble constant, namely those used to compute the distances to objects at particular redshifts, have resulted in differing Hubble constant estimations.
+Hubble’s initial estimation, determined by a simple linear fit between recession velocity and distance, gave roughly $500$ \si{km.s^{-1}.Mpc^{-1}} \cite{Hubble_1929}.
+Subsequent measurements have progressively refined this estimate, eventually stabilizing at approximately $70$ \si{km.s^{-1}.Mpc^{-1}} \cite{Freedman_2010}.
+However, different measurement approaches have led to significant disagreement between estimates: measurement uncertainties continue to diminish as methods improve, but the range of measured values does not.
+Figure \ref{fig:hist_h0} gives an overview of recent measurements, showing significant disagreement.
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.7]{H0whisker.pdf}
+    \caption{History $H_0$ in tension}
+    \label{fig:hist_h0}
+\end{figure}
+
+There are two dominant methods for estimating the Hubble constant which are in tension with one another.
+The first uses low redshift measurements of standard candles (footnote explaining SC), type Ia Supernovae, in order to determine $H_0$ \editremark{[haha what]}.
+The current estimate using this method is $H_0 = 74.03 \pm 1.42$ \si{km.s^{-1}.Mpc^{-1}} \cite{Riess_2019}.
+Another approach, utilizing high redshift measurements of the cosmic microwave background (CMB), gives a value of $H_0 = 67.36 \pm 0.56$ \si{km.s^{-1}.Mpc^{-1}} \cite{Planck_2020}.
+
+It is highly unlikely that the discrepancy between these measurements, at greater than $4\sigma$, can be explained as a statistical fluctuation or through systematic uncertainties.
+For instance, Tamara \textit{et al.} state that even small systematic errors in redshift will have a significant impact on measurements of $H_0$; however, this is not enough to account for the tension in $H_0$ \cite{Davis_2019}.
+See e.g. \cite{Efstathiou_2021,Calabrese_2008} for further discussion of systematic uncertainties.
+
+A method for determining $H_0$ that does not rely on standard candles could potentially help resolve the tension in measurements of the Hubble constant.
+In this paper we consider an approach utilizing gravitational waves as an independent distance measurement.
+
+%\paragraph{Low redshift ($z \leq 10$) measurement}
+
+%The $H_0$ is calculated locally by measuring the redshift of distant galaxies and then using a particular method to calculate their distances which is part of the cosmic distance ladder.
+%The redshift can be easily measured, and the distances can be measured locally by getting the distance from the standard candle techniques, including the Type Ia Supernovae and Cepheid variables.
+% \footnote{Astronomers use a “standard candle” to measure distances that are too vast to be measured using parallax. Because the light is spread out over a larger region, distant light sources appear fainter.}
+
+%Tamara et. al gives a statement that even small systematic errors in redshift will result in a significant impact on $H_0$ measurements (2019)\cite{Davis_2019}; however, only considering those errors are not quite enough to resolve the $H_0$ tension people encountered. The research calculation results remain stable with constantly decreasing the error bar, as shown in the figure, except for the results obtained by Freedman et. al. in 2019 shows the relatively low $H_0$ value falls in $69.8 \pm 1.88$ \si{km.s^{-1}.Mpc^{-1}}\cite{Freedman_2019}. Instead of using Cepheid variables, they use the calibration of Tip of the Red Giant Branch(TRGB), which is parallel to but independent from the former one. TRGB samples have higher mass and less sensitivity to the metallicity, so that the potential systematic error in measurement has decreased.
+
+%\paragraph{High redshift ($z \geq 10$) measurement}
+
+%$H_0$ can be calculated using CMB temperature changes. Several characteristics, like the ratio of baryonic to dark matter and $H_0$, influence the specific shape of the curve (known as the acoustic power spectrum). The angular diameter distance to the last scattering surface is used to calculate $H_0$. That isn’t a direct observable; instead, trigonometry is used to infer it. The angular scale of the Baryon Acoustic Oscillations in the CMB may be directly measured, it’s the distance between troughs in the power spectrum is shown below.
+
+%The temperature power spectrum is what is being used to determine the $H_0$. This is a way of looking at the ripples in the temperature field which encode the amount of dark and baryonic matter present, as well as the cosmological constant and other cosmological parameters.
+%\footnote{All the parameters are simultaneously constrained with respect to each other using MCMC or other "fitting" approaches. }
+
+%There are two possible systematic errors that are commonly seen. When we use two different likelihood pipelines for the data at certain multipoles, with different parameters used for the calibration efficiencies, it has little effect in reducing the Hubble tension \cite{Efstathiou_2021}. Therefore, the choice of likelihood will result in systematic errors. 
+%The second is the systematic error that can occur in the lensing parameter\cite{Calabrese_2008}. The lensing parameter simply rescales by hand the effects of gravitational lensing on the CMB angular power spectra and can be measured by the smoothing of the peaks in the damping tail. This lensing anomaly is not seen in the
+%Planck trispectrum data \footnote{CMB lensing} that offer a complementary and independent measurement. If there is no new physics in it, the alternative explanation could be due to a small but still undetected systematic error in the Planck data which can be used to reduce the Hubble Tension.
+
+\section{\label{sec:intro} Methods}
+
+In this paper we consider dark siren measurements, i.e. those which do not have an electromagnetic counterpart.
+This is the case for detections of binary black hole hole mergers, which are not expected to have observable EM counterparts.
+Though the detection of an EM counterpart can facilitate a determination of host galaxy and therefore result in a well-constrained measurement of $H_0$ \cite{GW170817_H0}, such detections are rare: at time of writing, GW170817 is the only neutron start merger detection with an identified EM counterpart \cite{GW170817_announce}.
+
+As early as 1986 it was proposed that an array of multiple gravitational wave detectors could be used to estimate the distance to an event $d_L$ and bounds on sky location\cite{Schutz_1986}.
+These estimates can then be used to produce a catalog of candidate host galaxies from existing sky surveys.
+Based on the posterior distributions for these localizations, we use a method for measuring $H_0$ layed out by Nair et al\cite{Nair_2018}.
+It has been predicted that these methods can confine the Hubble constant within the decade \cite{Chen_2018}.
+This technique was applied to the event GW170814 by collaborators from the LIGO and Virgo teams using results from the Dark Energy Survey of the southern sky\cite{GW170814_DES}.
+We carry out a similar analysis on simulated data sets based on historic GW data and simple physical assumptions for the distribution of galaxies within clusters.
 
 
 
-(not sure if we have to include):
-Gravitational Lensing also introduced a significant systematic error during measuring the high redshift $z$ (Hilbert et. al. 2018). 
+\editremark{(not sure if we have to include):
+Gravitational Lensing also introduced a significant systematic error during measuring the high redshift $z$ (Hilbert et. al. 2018). }
