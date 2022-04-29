@@ -8,6 +8,7 @@ import argparse
 import configparser
 import matplotlib.pyplot as plt
 
+from scipy import stats
 from scipy.spatial import Voronoi, voronoi_plot_2d, KDTree
 import pickle
 
@@ -54,249 +55,6 @@ parser.add_argument('--density', type=str, nargs='+', help='Density of galaxies 
 args = parser.parse_args()
 GAL_DENSITY = args.density
 
-class MCMC_Walker:
-    def __init__(self, x0, prior_range, likelihood, step_fact):
-        '''Constructor for a single MCMC walker
-        x0: array-like starting location, this should be selected randomly and assigned
-        prior range: this should be a list or array of tuples that specifies the valid range of the prior distribution for each parameter. The number of tuples must be the same as the length of the array x0 supplied. If prior_dist is not specified, a uniform prior is used by default.
-        likelihood: The functional form for the likelihood p(D|x). This should accept the array x as an argument.
-        step_sigma: The proposal matrix is taken to be an n-dimensional Gaussian with mean x and standard deviation step_sigma.
-        prior_dist: Prior distribution for p(x).
-        '''
-        assert len(x0) == len(prior_range)
-        self.n = len(x0)
-        self.x = x0[:]
-        self.prior_range = prior_range[:]
-        self.history = []
-        self.likelihood = likelihood
-        self.step_fact = step_fact
-        #store the likelihood of the current value of x for future steps
-        self.p_t0 = likelihood(x0)
-
-        self.time_consts = np.zeros(self.n)
-
-    def in_prior(self, pt):
-        for i in range(self.n):
-            if pt[i] < self.prior_range[i][0] or pt[i] > self.prior_range[i][1]:
-                return False
-        return True
-
-    def step(self):
-        '''Take a single step by making a proposal and calculating the acceptance likelihood.
-        '''
-        self.history.append( [self.x, self.p_t0] )
-
-        #generate a point from the proposal matrix by generating an n dimensional Guassian and normalizing
-        prop = np.random.normal(0, 1, size=self.n)
-        prop = prop / math.sqrt(sum(np.square(prop)))
-        rad = random.uniform(0, self.step_fact)
-        for i, ra in zip(range(self.n), self.prior_range):
-            prop[i] = rad*prop[i]*(ra[1] - ra[0]) + self.x[i]
-
-        if self.in_prior(prop):
-            #calculate the likelihood of the new point
-            p_t1 = self.likelihood(prop)
-
-            #this corresponds to alpha < 1
-            if p_t1 < self.p_t0:
-                if random.random() < p_t1 / self.p_t0:
-                    self.x = prop
-                    self.p_t0 = p_t1
-            else:
-                self.x = prop
-                self.p_t0 = p_t1
-
-    def calc_autocorrelation(self, max_k=np.inf, zero_stop=True):
-        '''Calculate the autocorrelation function of this walker and return the time constant.
-        max_k: maximum value of k to retain when performing the calculation
-        zero_stop: If set to True, the autocorrelation function is only computed up to (but not including) the value of k such that rho(k) < 0.
-        returns: a tuple containing the computed time constants and the autocorrelation function
-        '''
-        #fix max_k to be at most the number of points we have sampled to avoid overflows
-        if max_k > len(self.history):
-            max_k = len(self.history)
-
-        #calculate the mean values for each coordinate in x
-        x_bar = np.zeros(self.n)
-        for pt in self.history[:max_k]:
-            for j, xi in enumerate(pt[0]):
-                x_bar[j] += xi
-
-        #divide each sum by the total number of points
-        for j in range(self.n):
-            x_bar[j] /= max_k
-
-        #calculate variances
-        x_var = np.zeros(self.n)
-        for pt in self.history[:max_k]:
-            for j, xi in enumerate(pt[0]):
-                x_var[j] += (xi - x_bar[j])**2
-
-        #now we need to iterate over all lag values k between zero and max_k
-        autocorrs = np.zeros((self.n, max_k))
-        for j in range(self.n):
-            for k in range(max_k):
-                for i in range(max_k-k):
-                    autocorrs[j][k] += (self.history[i][0][j] - x_bar[j])*(self.history[i+k][0][j] - x_bar[j])
-                autocorrs[j][k] /= x_var[j]
-                if zero_stop and autocorrs[j][k] < 0:
-                    max_k = k
-                    break
-
-        #to compute the time constant, we only fit to lags before the autocorrelation goes negative so that the logarithm is defined
-        for j in range(self.n):
-            cross_ind = max_k
-            #we only need to find the point of zero crossing if we didn't already find it while calculating the autocorrelation
-            if not zero_stop:
-                for k, corr in enumerate(autocorrs[j]):
-                    if corr < 0:
-                        cross_ind = k
-                        break
-            from scipy.optimize import curve_fit
-            opt, cov = curve_fit(lambda x, a, b: a - b*x, [k for k in range(cross_ind)], np.log(autocorrs[j][:cross_ind]))
-            self.time_consts[j] = 1.0 / opt[1]
-
-        return self.time_consts, autocorrs
-
-    def burn(self, n_steps):
-        '''Burn in the sample for n steps.'''
-        for i in range(n_steps):
-            self.step()
-        self.calc_autocorrelation()
-        self.history = []
-
-    def get_samples_thin(self, thin_ratio=2, thin_fact=-1):
-        '''Fetch a list of samples from the thinned chain.
-        thin_ratio: The thinning factor is taken to be thin_ratio*time_const where time_const is the time constant generated by a call to calc_autocorrelation()
-        returns: A list of MCMC samples
-        '''
-
-        for tc in self.time_consts:
-            if tc == 0:
-                self.calc_autocorrelation()
-            break
-
-        #since this problem is multi-dimensional, we use the worst case scenario as the time constant
-        tc = max(self.time_consts)
-        if thin_fact < 0:
-            thin_fact = int(tc/thin_ratio)
-        return [self.history[i][0] for i in range(int(3*tc), len(self.history), thin_fact)]
-
-class MCMC_Ensemble:
-    def __init__(self, n_walkers, x_0, ranges, like, step_fact, burn_n=100):
-        self.n_walkers = n_walkers
-        self.dim = len(x_0[0])
-        self.walks = [MCMC_Walker(x_0[i], ranges, like, step_fact) for i in range(n_walkers)]
-        for w in self.walks:
-            w.burn(burn_n)
-
-    def walk(self, n_steps):
-        for w in self.walks:
-            for i in range(n_steps):
-                w.step()
-
-    def get_samples_thin(self, thin_fact):
-        samps = np.array( [[w.history[i][0] for i in range(0, len(w.history), thin_fact)] for w in self.walks] )
-        return samps.reshape(-1, self.dim, order='F')
-
-def det(dim, vert_list):
-    '''Helper function for calc_vol which computes the determinant of the matrix specified by the iterable of vertices.
-    '''
-    #recursion inside of recursion. Let's F*** that callstack up!
-    if dim == 1:
-        return vert_list[0]
-    elif dim == 2:
-        return vert_list[0][0]*vert_list[1][1] - vert_list[0][1]*vert_list[1][0]
-    elif dim == 3:
-        return vert_list[0][0]*vert_list[1][1]*vert_list[2][2] + vert_list[1][0]*vert_list[2][1]*vert_list[0][2] + vert_list[2][0]*vert_list[0][1]*vert_list[1][2] - vert_list[0][0]*vert_list[2][1]*vert_list[1][2] - vert_list[1][0]*vert_list[0][1]*vert_list[2][2] - vert_list[2][0]*vert_list[1][1]*vert_list[0][2]
-    mult = 1
-    part_sum = 0
-    for i in range(dim):
-        part_sum += mult*vert_list[i][0]*det(dim-1, [vert_list[j + (j-i+dim)//dim][1:] for j in range(dim-1)])
-        mult *= -1
-    return part_sum
-
-def calc_vol(dim, vert_lst):
-    '''Helper function for sample_GW_Events. Calculate the volume For a set of vertices specified by vert_lst.
-    vert_list: list of vertices. Each vertex should have dim number elements.
-    dim: dimensionality of each vertex
-    returns: the volume of the cell or -1 if it is invalid
-    '''
-    #base cases
-    if len(vert_lst) < dim+1:
-        return 0
-
-    #if we reach this point in execution then this isn't a base case
-    return abs( det(dim, [[v[i]-vert_lst[0][i] for i in range(dim)] for v in vert_lst[1:dim+1]]) )/math.factorial(dim) \
-            + calc_vol(dim, vert_lst[1:])
-
-'''setup MCMC sampling
-'''
-#load historic event data.
-dat = np.loadtxt(GW_HIST_FNAME, delimiter=',')
-#the units deg^2 are larger by several orders of magnitude which causes Voronoi tesselations to break. scale these down to the same order of magnitude as everything else. We're approximating all distance posteriors as Gaussian anyway, so we restrict the upper and lower uncertainties to be the same.
-dat = np.array([[d[0], (d[1]+d[2])/2, d[3]/SKYLOC_SCALE] for d in dat])
-dist_range = [min(dat[:,0]), max(dat[:,0])]
-sky_range = [min(dat[:,2]), max(dat[:,2])]
-#dat = np.array([ dat[:,0], dat[:,3]/1000 ]).transpose()
-dim_GW_evs = len(dat[0])
-#generate the voronoi tesselation of the historic data points and calculate the volume of each
-vor = Voronoi(dat)
-#setup the kd-tree to quickly find nearest neighbors
-tree = KDTree(dat)
-
-#calculate the reciprocal of the volume of each Voronoi cell. This gives an estimate of the PDF within that cell.
-rec_vols = np.zeros(len(vor.regions))
-for i, reg in enumerate(vor.regions):
-    valid = True
-    for j in reg:
-        if j < 0:
-            valid = False
-    if valid:
-        vol = calc_vol(dim_GW_evs, [vor.vertices[j] for j in reg])
-        rec_vols[i] = 0.0 if vol == 0 else 1/vol
-
-#we estimate the probability of a point by the reciprocal of the volume of its corresponding region in the Voronoi tesselation
-def est_prob(pt):
-    near = tree.query(pt)[1]
-    ind = vor.point_region[near]
-    return rec_vols[ind]
-
-#set up MCMC walkers
-walk_mc = MCMC_Ensemble(N_WALKERS, np.random.rand(N_WALKERS, dim_GW_evs)*6.0, [dist_range, dist_range, sky_range], est_prob, MCMC_STEP)
-
-def sample_GW_events(hist_fname, n_events):
-    '''Sample GW events using an MCMC model which is "trained" on historic data specified in localizations.txt
-    hist_fname: filename in csv format describing posterior distributions for historic events. The csv should have four colums. The first describes the expectation on the luminosity distance posterior, the second and third the upper and lower uncertainties on the distance respectively and the fourth column should give sky angle localizations. Distances should be in units Gpc and solid angles in deg^2
-    returns: a list of tuples for each event containing three elements, the measured luminosity distance, the uncertainty on luminosity distance and the solid angle confining sky location
-    '''
-    walk_mc.walk(500)
-    #sample data points. We scaled skylocations down, so we have to scale them back up
-    samps = [(MPC_PER_GPC*s[0], MPC_PER_GPC*s[1], SKYLOC_SCALE*s[2]) for s in walk_mc.get_samples_thin(MCMC_THIN)]
-
-    #make pretty pictures
-    '''x_vals = [s[0]/MPC_PER_GPC for s in samps]
-    y_vals = [s[2]/SKYLOC_SCALE for s in samps]
-    plt.scatter(x_vals, y_vals)
-    plt.scatter(dat[:,0], dat[:,2], color='orange')
-    plt.show()'''
-    return samps[:n_events]
-
-    #emcee gives a bizzare ValueError: Initial state has a large condition number. Make sure that your walkers are linearly independent for the best performance regardless of what initial values are passed. I gave up trying to fix it.
-    #p0 = np.random.rand(N_WALKERS, dim)
-    #sampler = emcee.EnsembleSampler(N_WALKERS, dim, est_log_prob)
-
-    #burn in
-    #sampler.run_mcmc(p0, 100, skip_initial_state_check=False)
-    #sampler.reset()
-
-    #run samples
-    #sampler.run_mcmc(p0, 1000, thin_by=10, skip_initial_state_check=False)
-
-    #sample data points. We scaled skylocations down, so we have to scale them back up
-    #samps = sampler.get_chain(flat=True)
-    #return [(MPC_PER_GPC*s[0], MPC_PER_GPC*s[1], SKYLOC_SCALE*s[2]) for s in samps]
-
 def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_range, n_events):
     '''Samples from a uniform population of potential GW events.
     dist_range: a tuple containing minimal and maximal values for measured luminosity distance
@@ -314,7 +72,23 @@ def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_ra
         ret.append( (dist, dist_err, solid_angle) )
     return ret
 
-#sample_GW_events()
+def sample_GW_events(hist_fname, n_events):
+    '''Sample GW events using an MCMC model which is "trained" on historic data specified in localizations.txt
+    hist_fname: filename in csv format describing posterior distributions for historic events. The csv should have four colums. The first describes the expectation on the luminosity distance posterior, the second and third the upper and lower uncertainties on the distance respectively and the fourth column should give sky angle localizations. Distances should be in units Gpc and solid angles in deg^2
+    returns: a list of tuples for each event containing three elements, the measured luminosity distance, the uncertainty on luminosity distance and the solid angle confining sky location
+    '''
+    dat = np.loadtxt(hist_fname, delimiter=',')
+    dat = np.array([[d[0], (d[1]+d[2])/2, d[3]/SKYLOC_SCALE] for d in dat])
+    min_vals = [min(dat[:,col]) for col in range(3)]
+    kern = stats.gaussian_kde(dat.transpose())
+    samps = kern.resample(n_events).transpose()
+    ret = []
+    #we reject all points which aren't strictly positive or have an uncertainty greater than the mean
+    for s in samps:
+        if s[0] > min_vals[0] and s[1] > min_vals[1] and s[2] > min_vals[2] and s[0] > s[1]:
+            ret.append([MPC_PER_GPC*s[0], MPC_PER_GPC*s[1], SKYLOC_SCALE*s[2]])
+
+    return ret
 
 def soliddeg_to_solidrad(solid_deg):
     '''Convert solid angle given in degrees^2 to solid angle in radians^2

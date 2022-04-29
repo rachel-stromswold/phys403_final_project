@@ -9,3 +9,4 @@ paper/*.log
 paper/*.out
 paper/*.pdf
 plot_data/*
+*.swp
