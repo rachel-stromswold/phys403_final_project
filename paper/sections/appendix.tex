@@ -1,0 +1,14 @@
+\section{GW Event sampling} \label{sec:develop}
+To generate simulated gravitational wave data, we first develop an estimate of the probability distribution. This is a very low dimensional probability distribution, with only three variables of interest, luminosity distance, luminosity distance errors and sky location bounds. The training data was taken from the third round of LIGO observations\cite{GWTC_2,GWTC_3}. After the candidate selection is performed, this contains only 76 data points.
+
+Since this problem is so low dimensional and we have so few data points, we can fairly easily produce a Voronoi tesselation of all observations. The Voronoi tesselation of $N$ is a partition of space with $N$ regions such that each of the $N$ points is contained in exactly one region and all points within the region corresponding to point $i$ are closer to point $i$ than any other point. As such, the reciprocal of the volume of each cell gives an estimate on the density of points within a given region.
+
+To describe our procedure formally, let $D=\{\vec{x}_i : 1\leq i\leq N\}$ be the set of training points and $\{V_i\}$ be the corresponding set of cells in the Voronoi diagram. Let $NN(\vec{y}):\mathbb{R}^d\to \{i\in\mathbb{N} : 1\leq i\leq N\}$ be the function that maps the point $\vec{y}$ to the index $i$ of its nearest neighbor in the set $D$, and let $v(V_i)$ be the volume of the $i^{th}$ cell. We then assign a probability distribution to each point $\vec{y}\in\mathbb{R}^d$, 
+
+\begin{equation}
+p(\vec{y} | D) = \left( v( V_{NN(\vec{y})} ) \right)^{-1}
+\end{equation}
+
+With this probability distribution in place, we can use Markov Chain Monte Carlo to generate event samples.
+
+It was necessary to rescale the sky location uncertainty by a factor of $1000$ to avoid numeric instabilities before producing tesselations. Training data and MCMC samples are shown in figure \ref{fig:MCMC}

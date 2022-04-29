@@ -23,12 +23,13 @@ PI_BY_8_QUADROOT = (8 / math.pi)**0.25
 config = configparser.ConfigParser()
 config.read('params.conf')
 GW_HIST_FNAME = config['simulation']['GW_hist_fname']
-CONFINE_THRESHOLD = float(config['simulation']['min_event_volume'])
+CONFINE_THRESHOLD = float(config['simulation']['max_event_volume'])
 H0_TRUE = float(config['simulation']['H_0_true'])
 C_L = float(config['physical']['light_speed'])
 CLUST_DENSITY = float(config['physical']['cluster_density'])
 GAL_DENSITY = float(config['physical']['galaxy_density'])
-CRIT_GAL_N = int(config['physical']['crit_n_gal'])
+CRIT_GAL_N = float(config['physical']['crit_n_gal'])
+GAMMA_SHAPE_N = float(config['physical']['n_alpha'])
 R_200_SCALE = float(config['physical']['scale_const'])
 R_SCALE_POW = float(config['physical']['scale_pow'])
 GW_LOC_RANGE = [float(val) for val in config['simulation']['GW_dist_range'].split(sep=',')]
@@ -269,7 +270,7 @@ def sample_GW_events(hist_fname, n_events):
     hist_fname: filename in csv format describing posterior distributions for historic events. The csv should have four colums. The first describes the expectation on the luminosity distance posterior, the second and third the upper and lower uncertainties on the distance respectively and the fourth column should give sky angle localizations. Distances should be in units Gpc and solid angles in deg^2
     returns: a list of tuples for each event containing three elements, the measured luminosity distance, the uncertainty on luminosity distance and the solid angle confining sky location
     '''
-    walk_mc.walk(1000)
+    walk_mc.walk(500)
     #sample data points. We scaled skylocations down, so we have to scale them back up
     samps = [(MPC_PER_GPC*s[0], MPC_PER_GPC*s[1], SKYLOC_SCALE*s[2]) for s in walk_mc.get_samples_thin(MCMC_THIN)]
 
@@ -403,7 +404,7 @@ def gen_clusters(solid_angle, d_l, d_l_err):
 
     n_clusters = gen_poisson(lmbda)
     print("lmbda = {}".format(lmbda))
-    n_gals_arr = np.random.chisquare(CRIT_GAL_N, size=n_clusters).astype(np.int)
+    n_gals_arr = np.random.gamma(GAMMA_SHAPE_N, CRIT_GAL_N/(GAMMA_SHAPE_N-1), size=n_clusters).astype(np.int)
 
     #we take mass to be proportional to the number of clusters. The likelihood that a cluster is the host should be proportional to its mass
     n_gals_tot = sum(n_gals_arr)
