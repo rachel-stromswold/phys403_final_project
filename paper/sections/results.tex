@@ -6,30 +6,22 @@ We found that a total of $650$ observations were needed to produce the desired $
 These localized regions corresponded to $15.43\%$ of all generated samples.
 In all of our tests we injected a known value of $H_0=70$\si{km.s^{-1}.Mpc^{-1}}.
 
-\begin{figure}
+%\begin{figure*}[t]
+%    \centering
+%    \includegraphics[width=1.5\columnwidth]{figures/posterior.pdf}
+%    \caption{Upper: Posteriors produced from individual events. The bias of posteriors with poorer localization is noticable, and is probably contributing to the underestimate of $H_0$ that we note. Lower: The posterior $p(H_0 | d_{GW}, d_C)$ produced after $100$ samples. The $68\%$ Confidence interval is shown by the dashed lines. The true injected value is shown in blue.}
+%    \label{fig:posterior}
+%\end{figure*}
+\begin{figure}[t]
     \centering
-    \includegraphics[width=0.9\columnwidth]{figures/diff.pdf}
-    \caption{The deviation between the injected known value of $H_0$ and our expectation value based on $p(H_0 | d_{GW}, d_C)$.}
-    \label{fig:mean_diff}
-\end{figure}
-
-\begin{figure}
-    \centering
-    \includegraphics[width=0.9\columnwidth]{figures/std.pdf}
-    \caption{The standard deviation obtained from the posterior $p(H_0 | d_{GW}, d_C)$.}
-    \label{fig:std}
-\end{figure}
-
-\begin{figure*}
-    \centering
-    \includegraphics[width=1.5\columnwidth]{figures/posterior.pdf}
+    \includegraphics[width=\columnwidth]{figures/posterior.pdf}
     \caption{Upper: Posteriors produced from individual events. The bias of posteriors with poorer localization is noticable, and is probably contributing to the underestimate of $H_0$ that we note. Lower: The posterior $p(H_0 | d_{GW}, d_C)$ produced after $100$ samples. The $68\%$ Confidence interval is shown by the dashed lines. The true injected value is shown in blue.}
     \label{fig:posterior}
-\end{figure*}
+\end{figure}
 
-\begin{figure}
+\begin{figure}[t]
     \centering
-    \includegraphics[width=0.95\columnwidth]{figures/correlation.pdf}
+    \includegraphics[width=\columnwidth]{figures/correlation.pdf}
     \caption{The means and standard deviations of the estimates on $H_0$ for individual events. Note the clear correlation between these quantities.}
     \label{fig:correlation}
 \end{figure}
