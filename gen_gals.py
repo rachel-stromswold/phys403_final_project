@@ -263,8 +263,11 @@ def trim_events(samples):
 def make_samples(n_events):
     #events = sample_GW_events_uniform(GW_LOC_RANGE, GW_LOC_SCALE, GW_DERR_SIG, SKY_ANGLE_RANGE, n_events)
     events = []
+    total_n_events = 0
     while len(events) < n_events:
-        events += trim_events(sample_GW_events(GW_HIST_FNAME, n_events))[0]
+        res = trim_events(sample_GW_events(GW_HIST_FNAME, n_events))
+        events += res[0]
+        total_n_events += res[1]
     events = events[:n_events]
     #events = trim_events( sample_GW_events(GW_HIST_FNAME, n_events) )
     for i, ev in enumerate(events):
@@ -301,5 +304,6 @@ def make_samples(n_events):
             rshift_grp['r'] = np.array(locs[2])
             rshift_grp['z'] = np.array(locs[3])
             rshift_grp['z_err'] = np.array(locs[4])
+    print( "{} out of {} ({} %) events were sufficiently localized".format(len(events), total_n_events, 100*len(events)/total_n_events) )
 
 make_samples(50)
