@@ -24,7 +24,8 @@ PI_BY_8_QUADROOT = (8 / math.pi)**0.25
 config = configparser.ConfigParser()
 config.read('params.conf')
 GW_HIST_FNAME = config['simulation']['GW_hist_fname']
-CONFINE_THRESHOLD = float(config['simulation']['max_event_volume'])
+CONFINE_THRESHOLD_LO = float(config['simulation']['min_event_volume'])
+CONFINE_THRESHOLD_HI = float(config['simulation']['max_event_volume'])
 H0_TRUE = float(config['simulation']['H_0_true'])
 C_L = float(config['physical']['light_speed'])
 CLUST_DENSITY = float(config['physical']['cluster_density'])
@@ -255,7 +256,7 @@ def trim_events(samples):
     for i, s in enumerate(samples):
         #calculate the volume of the event. If it is below some threshold, then add it to the return array
         vol = get_GW_event_vol(soliddeg_to_solidrad(s[2]), s[0]-s[1], s[0]+s[1])
-        if vol < CONFINE_THRESHOLD:
+        if vol > CONFINE_THRESHOLD_LO and vol < CONFINE_THRESHOLD_HI:
             ret.append(s)
     return ret, len(samples)
 
