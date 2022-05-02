@@ -18,11 +18,11 @@ We carry out a similar analysis on simulated data sets based on historic GW data
 
 %\section{Data} \label{sec:develop}
 
-Historic data is taken from merger catalogs from the second and third year of LIGO observations \cite{GWTC_2,GWTC_3}. Our analysis is only interested in the solid angle covered by sky localization ($\Omega$), distances obtained from the GW data ($d_L$), and their uncertainties, $\sigma_d$. We thus marginalize over all other parameters to obtain a three dimensional probability distribution containing only these parameters of interest. It vastly simplifies our analysis if we assume that the uncertainties on $d_L$ are Gaussian. However, posterior distributions from the LIGO papers contain differing upper and lower confidences. We take the half width on these posteriors as our Gaussian uncertainties.
+Historic data is taken from merger catalogs from the second and third year of LIGO observations \cite{GWTC_2,GWTC_3}. Our analysis is only interested in the solid angle covered by sky localization ($\Omega$), distances obtained from the GW data ($d_L$), and their uncertainties, $\sigma_d$. We thus marginalize over all other parameters to obtain a three dimensional probability distribution containing only these parameters of interest. It vastly simplifies our analysis if we assume that the uncertainties on $d_L$ are Gaussian. However, posterior distributions from the LIGO papers contain differing upper and lower credible limits. We take the half width on these posteriors as our Gaussian uncertainties.
 
 After obtaining these marginalized probability distributions, we use historic data as a training set for Gaussian kernel density estimation. We then use the kernel estimation to sample simulated events which have the same underlying probability distribution as observations. The returned samples have a finite probability to be from unphysical regions, i.e. $d_L \leq 0$, $\Omega\leq 0$ or $\sigma_d > d_L$. To counteract this, we reject all samples which are outside of the extremal historic values or violate the $\sigma_d \leq d_L$ constraint. Many of the sampled events will have very large localization regions, which makes it inconvenient to use them for estimates of $H_0$. Since our goal is to produce an estimate of how many observations are required to produce estimates of $H_0$ we only perform further analysis on events that were well localized.
 
-After producing simulated GW events we need to select a suitable sky catalog. These data are also simulated by randomly sampling a number of galaxy clusters which are assumed not to interact with one another. The total mass of the cluster is assumed to follow a Press-Schechter mass distribution\cite{Press_1974}. Peculiar motions (which affect the measured redshift $z$) and distance from the center of mass are sampled such that the Virial theorem is obeyed, but other important factors like the very high concentrations of dark matter within clusters are neglected. More details on cluster generation are given in appendix \ref{append_b}.
+After producing simulated GW events we need to select a suitable sky catalog. These data are also simulated by randomly sampling a number of galaxy clusters which are assumed not to interact with one another. The total mass of the cluster is assumed to follow a Press-Schechter mass distribution\cite{Press_1974}. Peculiar motions (which affect the measured redshift $z$) and distance from the center of mass are sampled such that the Virial theorem is obeyed, but other important factors like the very high concentrations of dark matter within clusters are neglected. More details on cluster generation are given in appendix \ref{sec:clust_gen}.
     
 %\subsection{\label{Method} Methodology}
 
@@ -53,7 +53,7 @@ where $H(z_i)$ is the Hubble parameter in redshift space,
 \begin{equation}
 H(z_i) = H_0^3 \left(\Omega_m (1+z)^3 + \Omega_\Lambda\right)
 \end{equation}
-where we have assumed a flat universe so $\omega_k = 0$. We will take $\omega_m = 0.3$ and $\omega_\Lambda = 0.7$ in keeping with Soares-Santos et al. We expect our catalog of galaxies to have very low uncertainty on sky location, so we take $p(d_C|z_i,\Omega)=p(d_C|z_i)\delta(\Omega - \Omega_i)$. Finally we can write the posterior distribution for $H_0$:
+where we have assumed a flat universe so $\Omega_k = 0$. We will take $\Omega_m = 0.3$ and $\Omega_\Lambda = 0.7$ in keeping with Soares-Santos et al \cite{GW170814_DES}. We expect our catalog of galaxies to have very low uncertainty on sky location, so we take $p(d_C|z_i,\Omega)=p(d_C|z_i)\delta(\Omega - \Omega_i)$. Finally we can write the posterior distribution for $H_0$:
 
 \begin{align}
      p&(H_0|d_{GW}, d_C)\propto p(H_0) \sum_i \frac{1}{Z_i} \nonumber\\
@@ -67,18 +67,3 @@ where $d_L(z_i, H_0) = cz_i / H_0$ uses Hubble's law to express luminosity dista
     &\frac{p(\hat{\Omega})}{\sqrt{2\pi}\sigma(\hat{\Omega})} \exp\left(-\frac{(cz_i/H_0 - \hat{d}_{GW})^2}{2\sigma_{GW}^2}\right).
     \label{eq:GW_like}
 \end{align}
-
-\begin{figure}
-    \centering
-    \includegraphics[width=\columnwidth]{figures/diff.pdf}
-    \caption{The deviation between the injected known value of $H_0$ and our expectation value based on $p(H_0 | d_{GW}, d_C)$.}
-    \label{fig:mean_diff}
-\end{figure}
-
-\begin{figure}
-    \centering
-    \includegraphics[width=\columnwidth]{figures/std.pdf}
-    \caption{The standard deviation obtained from the posterior $p(H_0 | d_{GW}, d_C)$.}
-    \label{fig:std}
-\end{figure}
-

@@ -58,8 +58,12 @@ LITTLE_H = H0_TRUE / 100
 #override configuration file with command line arguments if supplied
 parser = argparse.ArgumentParser(description='Query sky-surveys for redshift data corresponding to a gravitational-wave detection.')
 parser.add_argument('--density', type=str, nargs='+', help='Density of galaxies in cluster (Mpc^-3). Defaults to 5e-6.', default=GAL_DENSITY)
+parser.add_argument('--n-events-generate', type=int, help='Number of galaxy catalogs to generate.', default=100)
+parser.add_argument('--volume-range', type=float, nargs='+', help='Simulated detections which have a localization volume outside of this range will not be considered for analysis.', default=(CONFINE_THRESHOLD_LO, CONFINE_THRESHOLD_HI))
 args = parser.parse_args()
 GAL_DENSITY = args.density
+CONFINE_THRESHOLD_LO, CONFINE_THRESHOLD_HI = args.volume_range
+N_EVENTS = args.n_events_generate
 
 def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_range, n_events):
     '''Samples from a uniform population of potential GW events.
@@ -318,4 +322,4 @@ def make_samples(n_events):
             rshift_grp['z_err'] = np.array(locs[4])
     print( "{} out of {} ({} %) events were sufficiently localized".format(len(events), total_n_events, 100*len(events)/total_n_events) )
 
-make_samples(100)
+make_samples(N_EVENTS)
