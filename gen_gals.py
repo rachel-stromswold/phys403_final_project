@@ -19,7 +19,7 @@ SKYLOC_SCALE = 1000
 MPC_PER_GPC = 1000
 
 POISSON_CUTOFF_LAMBDA = 20
-PI_BY_8_QUADROOT = (2 / math.pi)**0.25
+PI_BY_2_QUADROOT = (2 / math.pi)**0.25
 
 config = configparser.ConfigParser()
 config.read('params.conf')
@@ -28,9 +28,14 @@ CONFINE_THRESHOLD_LO = float(config['simulation']['min_event_volume'])
 CONFINE_THRESHOLD_HI = float(config['simulation']['max_event_volume'])
 H0_TRUE = float(config['simulation']['H_0_true'])
 C_L = float(config['physical']['light_speed'])
+G = float(config['physical']['grav_const'])
 CLUST_DENSITY = float(config['physical']['cluster_density'])
 GAL_DENSITY = float(config['physical']['galaxy_density'])
 CRIT_GAL_N = float(config['physical']['crit_n_gal'])
+CLUST_MASS_LAMBDA_0 = float(config['physical']['mass_lambda_0'])
+CLUST_MASS_SCALE = float(config['physical']['mass_scale_rich'])
+CLUST_MASS_ALPHA = float(config['physical']['mass_alpha'])
+CLUST_MASS_VAR = float(config['physical']['mass_gauss_err'])
 GAMMA_SHAPE_N = float(config['physical']['n_alpha'])
 R_200_SCALE = float(config['physical']['scale_const'])
 R_SCALE_POW = float(config['physical']['scale_pow'])
@@ -181,6 +186,12 @@ def gen_clusters(solid_angle, d_l, d_l_err):
     print("lmbda = {}".format(lmbda))
     n_gals_arr = np.random.gamma(GAMMA_SHAPE_N, CRIT_GAL_N/(GAMMA_SHAPE_N-1), size=n_clusters).astype(np.int)
 
+    #we need to find the total mass of the cluster to calculate its velocity dispersion
+    clust_masses = CLUST_MASS_SCALE + CLUST_MASS_ALPHA*np.log(n_gals_arr/CLUST_MASS_LAMBDA_0)
+    #apply a random scatter (eq 15 from Simet et al.) and exponentiate since we use log masses
+    clust_scats = np.random.normal(0, 1, size=n_clusters)
+    clust_masses = np.exp( clust_masses + np.sqrt(CLUST_MASS_VAR + CLUST_MASS_ALPHA**2/n_gals_arr)*clust_scats )
+
     #we take mass to be proportional to the number of clusters. The likelihood that a cluster is the host should be proportional to its mass
     n_gals_tot = sum(n_gals_arr)
     #to make probability proportional to number, sample uniformly between 0 and 1. Then add up each element from the sorted mass until we exceed the randomly selected fractional number
@@ -216,13 +227,14 @@ def gen_clusters(solid_angle, d_l, d_l_err):
 
     print("Creating space with %d clusters" % n_clusters)
 
-    for x_cent, y_cent, z_cent, n_gals in zip(x_cents, y_cents, z_cents, n_gals_arr):
+    for x_cent, y_cent, z_cent, n_gals, clust_mass in zip(x_cents, y_cents, z_cents, n_gals_arr, clust_masses):
         #The typical radius goes as a power law in the number of galaxies. We take the distance of the galaxies to follow a three dimensional Gaussian about the center. From this we can derive that if velocities are Gaussian distributed, they should have mean 0 and variance r_200*sqrt(pi/2)
         r_200 = R_200_SCALE*(n_gals**R_SCALE_POW)
         gals_cent_r = np.random.normal(0, r_200, 3*n_gals)
 
         #generate the (radial components) of peculiar velocity for each galaxy. We don't multiply by three because we only care about the radial component
-        pec_vels = np.random.normal(0.0, math.sqrt(r_200*PI_BY_8_QUADROOT), n_gals)
+        #print(G*clust_mass*r_200*PI_BY_2_QUADROOT)
+        pec_vels = np.random.normal(0.0, math.sqrt(G*r_200*PI_BY_2_QUADROOT), n_gals)
         #calculate corresponding redshifts for each galaxy
         for i in range(n_gals):
             #get the location of the galaxy in absolute coordinates

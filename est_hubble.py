@@ -311,9 +311,11 @@ pdf = Posterior_PDF(PRIOR_RANGE)
 
 pdf_array = np.empty((args.n_events_use, N_H0))
 
-for i, ev in enumerate(EVENT_LIST[:args.n_events_use]):
+events = EVENT_LIST[:args.n_events_use]
+for i, ev in enumerate(events):
     #load the list of potential galaxies
     rshift_fname = SAMPLE_TYPE + '/' + ev + '_rshifts.h5'
+    print( "Detection %d / %d:" % (i, len(events)), end=' ' )
     pdf.add_event(rshift_fname)
     pdf.normalize()
     pdf_array[i] = pdf.p_list_current
