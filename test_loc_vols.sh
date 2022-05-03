@@ -9,12 +9,13 @@ mkdir $folder/plot_data
 timedatectl > $folder.log
 
 for lr in "${loc_ranges[@]}"; do
-    for i in {1..100}; do
+    for i in {1..20}; do
 	    #echo "running: make_landscapes.py --folder $folder --sampling=sobol --n_points=500 --depolarize $d --prob01 $r"
+            out_name=$(echo "posterior_$lr $i.txt" | sed 's/ /_/g')
 	    echo "i=$i:"
             echo "\tpython3 gen_gals.py --out-directory $folder/sim_events --volume-range lr"
             echo "\tpython3 est_hubble.py --in-directory $folder/sim_events --n-cores-max 10 --save-pdf $folder/plot_data/posterior_$i.txt"
 	    python3 gen_gals.py --out-directory $folder/sim_events --volume-range $lr >> $foler.log
-            python3 est_hubble.py --in-directory $folder/sim_events --n-cores-max 10 --save-pdf $folder/plot_data/posterior_$i.txt >> $foler.log
+            python3 est_hubble.py --in-directory $folder/sim_events --n-cores-max 10 --save-pdf $folder/plot_data/$out_name >> $foler.log
 	done
 done
