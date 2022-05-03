@@ -60,10 +60,12 @@ parser = argparse.ArgumentParser(description='Query sky-surveys for redshift dat
 parser.add_argument('--density', type=str, nargs='+', help='Density of galaxies in cluster (Mpc^-3). Defaults to 5e-6.', default=GAL_DENSITY)
 parser.add_argument('--n-events-generate', type=int, help='Number of galaxy catalogs to generate.', default=100)
 parser.add_argument('--volume-range', type=float, nargs='+', help='Simulated detections which have a localization volume outside of this range will not be considered for analysis.', default=(CONFINE_THRESHOLD_LO, CONFINE_THRESHOLD_HI))
+parser.add_argument('--out-directory', type=str, help='Location to save generated values to', default=DIR_NAME)
 args = parser.parse_args()
 GAL_DENSITY = args.density
 CONFINE_THRESHOLD_LO, CONFINE_THRESHOLD_HI = args.volume_range
 N_EVENTS = args.n_events_generate
+DIR_NAME = args.out_directory
 
 def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_range, n_events):
     '''Samples from a uniform population of potential GW events.
@@ -188,13 +190,13 @@ def gen_clusters(solid_angle, d_l, d_l_err):
 
     n_clusters = gen_poisson(lmbda)
     print("lmbda = {}".format(lmbda))
-    n_gals_arr = np.random.gamma(GAMMA_SHAPE_N, CRIT_GAL_N/(GAMMA_SHAPE_N-1), size=n_clusters).astype(np.int)
+    n_gals_arr = np.random.gamma(GAMMA_SHAPE_N, CRIT_GAL_N/(GAMMA_SHAPE_N-1), size=n_clusters).astype(int)
 
     #we need to find the total mass of the cluster to calculate its velocity dispersion
-    clust_masses = CLUST_MASS_SCALE + CLUST_MASS_ALPHA*np.log(n_gals_arr/CLUST_MASS_LAMBDA_0)
+    '''clust_masses = CLUST_MASS_SCALE + CLUST_MASS_ALPHA*np.log(n_gals_arr/CLUST_MASS_LAMBDA_0)
     #apply a random scatter (eq 15 from Simet et al.) and exponentiate since we use log masses
     clust_scats = np.random.normal(0, 1, size=n_clusters)
-    clust_masses = np.exp( clust_masses + np.sqrt(CLUST_MASS_VAR + CLUST_MASS_ALPHA**2/n_gals_arr)*clust_scats )
+    clust_masses = np.exp( clust_masses + np.sqrt(CLUST_MASS_VAR + CLUST_MASS_ALPHA**2/n_gals_arr)*clust_scats )'''
 
     #we take mass to be proportional to the number of clusters. The likelihood that a cluster is the host should be proportional to its mass
     n_gals_tot = sum(n_gals_arr)
@@ -231,7 +233,7 @@ def gen_clusters(solid_angle, d_l, d_l_err):
 
     print("Creating space with %d clusters" % n_clusters)
 
-    for x_cent, y_cent, z_cent, n_gals, clust_mass in zip(x_cents, y_cents, z_cents, n_gals_arr, clust_masses):
+    for x_cent, y_cent, z_cent, n_gals in zip(x_cents, y_cents, z_cents, n_gals_arr):
         #The typical radius goes as a power law in the number of galaxies. We take the distance of the galaxies to follow a three dimensional Gaussian about the center. From this we can derive that if velocities are Gaussian distributed, they should have mean 0 and variance r_200*sqrt(pi/2)
         r_200 = R_200_SCALE*(n_gals**R_SCALE_POW)
         gals_cent_r = np.random.normal(0, r_200, 3*n_gals)

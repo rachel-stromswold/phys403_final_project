@@ -24,7 +24,7 @@ OMEGA_M = float(config['physical']['omega_matter'])
 OMEGA_A = float(config['physical']['omega_lambda'])
 C_L = float(config['physical']['light_speed'])
 C_L_SQ = C_L*C_L
-SAMPLE_TYPE = config['analysis']['type'].strip()
+DIR_NAME = config['analysis']['type'].strip()
 EVENT_LIST = sorted(['_'.join(s.split('_')[:2]) for s in os.listdir(config['analysis']['event_dir'])])
 if len(PRIOR_RANGE) != 2:
     raise ValueError("Ranges must have two elements.")
@@ -35,12 +35,12 @@ N_H0 = 250
 
 #override configuration file with command line arguments if supplied
 parser = argparse.ArgumentParser(description='Estimate the Hubble constant based on a GW event volume and a corresponding skymap.')
-parser.add_argument('--type', type=str, nargs='?', help='Type of events to sample. Accepcted values are GW_events for real events and sim_events for simulated events. Defaults to {}.'.format(SAMPLE_TYPE), default=SAMPLE_TYPE)
+parser.add_argument('--in-directory', type=str, nargs='?', help='Type of events to sample. Accepcted values are GW_events for real events and sim_events for simulated events. Defaults to {}.'.format(DIR_NAME), default=DIR_NAME)
 parser.add_argument('--n-events-use', type=int, default=len(EVENT_LIST), help='Number of events to use in the Hubble constant estimation. Must be <= the number of events available.')
 parser.add_argument('--n-cores-max', type=int, default=N_CORES, help='Maximum number of cores to use. Otherwise computer get angry >:{')
 parser.add_argument('--save-pdf', type=str, help='Location to save the PDFs')
 args = parser.parse_args()
-SAMPLE_TYPE = args.type
+DIR_NAME = args.type
 N_CORES = min(args.n_cores_max, N_CORES)
 
 def integrand_em(z_i, z_mu, z_err_sq, h_0):
@@ -314,7 +314,7 @@ pdf_array = np.empty((args.n_events_use, N_H0))
 events = EVENT_LIST[:args.n_events_use]
 for i, ev in enumerate(events):
     #load the list of potential galaxies
-    rshift_fname = SAMPLE_TYPE + '/' + ev + '_rshifts.h5'
+    rshift_fname = DIR_NAME + '/' + ev + '_rshifts.h5'
     print( "Detection %d / %d:" % (i, len(events)), end=' ' )
     pdf.add_event(rshift_fname)
     pdf.normalize()
