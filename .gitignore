@@ -1,3 +1,4 @@
+GW_Events*
 GW_events*
 sim_events*
 secret.txt
@@ -10,3 +11,4 @@ paper/*.out
 paper/*.pdf
 plot_data/*
 *.swp
+*.pdf

@@ -40,7 +40,7 @@ parser.add_argument('--n-events-use', type=int, default=len(EVENT_LIST), help='N
 parser.add_argument('--n-cores-max', type=int, default=N_CORES, help='Maximum number of cores to use. Otherwise computer get angry >:{')
 parser.add_argument('--save-pdf', type=str, help='Location to save the PDFs')
 args = parser.parse_args()
-DIR_NAME = args.type
+DIR_NAME = args.in_directory
 N_CORES = min(args.n_cores_max, N_CORES)
 
 def integrand_em(z_i, z_mu, z_err_sq, h_0):
