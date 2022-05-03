@@ -39,6 +39,7 @@ parser.add_argument('--in-directory', type=str, nargs='?', help='Type of events 
 parser.add_argument('--n-events-use', type=int, default=len(EVENT_LIST), help='Number of events to use in the Hubble constant estimation. Must be <= the number of events available.')
 parser.add_argument('--n-cores-max', type=int, default=N_CORES, help='Maximum number of cores to use. Otherwise computer get angry >:{')
 parser.add_argument('--save-pdf', type=str, help='Location to save the PDFs')
+parser.add_argument('--save-final', action='store_true', default=False)
 args = parser.parse_args()
 DIR_NAME = args.in_directory
 N_CORES = min(args.n_cores_max, N_CORES)
@@ -323,9 +324,10 @@ for i, ev in enumerate(events):
 if args.save_pdf is not None:
     np.savetxt(args.save_pdf, pdf_array)
 
-plt.plot(pdf.h_list, pdf.p_list)
-plt.xlabel(r'$H_0$ km s$^{-1}$ Mpc$^{-1}$')
-plt.ylabel(r'$p(H_0 | D)$')
-plt.title(r'Posterior distribution for $H_0$')
-plt.show()
-#plt.savefig('hub.svg')
+if args.save_final:
+    plt.plot(pdf.h_list, pdf.p_list)
+    plt.xlabel(r'$H_0$ km s$^{-1}$ Mpc$^{-1}$')
+    plt.ylabel(r'$p(H_0 | D)$')
+    plt.title(r'Posterior distribution for $H_0$')
+    #plt.show()
+    plt.savefig('hub.svg')
