@@ -12,3 +12,4 @@ paper/*.pdf
 plot_data/*
 *.swp
 *.pdf
+runs*
