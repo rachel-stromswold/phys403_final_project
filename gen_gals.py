@@ -232,6 +232,7 @@ def gen_clusters(solid_angle, d_l, d_l_err):
     z_cents[0] = host_loc[2]
 
     print("Creating space with %d clusters" % n_clusters)
+    print( "\tn_gals={}, angle={}, dist={}, vol={}".format(n_gals_tot, solid_angle, d_l, vol) )
 
     for x_cent, y_cent, z_cent, n_gals in zip(x_cents, y_cents, z_cents, n_gals_arr):
         #The typical radius goes as a power law in the number of galaxies. We take the distance of the galaxies to follow a three dimensional Gaussian about the center. From this we can derive that if velocities are Gaussian distributed, they should have mean 0 and variance r_200*sqrt(pi/2)
