@@ -36,6 +36,8 @@ CLUST_MASS_LAMBDA_0 = float(config['physical']['mass_lambda_0'])
 CLUST_MASS_SCALE = float(config['physical']['mass_scale_rich'])
 CLUST_MASS_ALPHA = float(config['physical']['mass_alpha'])
 CLUST_MASS_VAR = float(config['physical']['mass_gauss_err'])
+OMEGA_M = float(config['physical']['omega_matter'])
+OMEGA_A = float(config['physical']['omega_lambda'])
 GAMMA_SHAPE_N = float(config['physical']['n_alpha'])
 R_200_SCALE = float(config['physical']['scale_const'])
 R_SCALE_POW = float(config['physical']['scale_pow'])
@@ -130,6 +132,31 @@ def gen_poisson(mean):
     else:
         return int( random.gauss(mean, math.sqrt(mean)) )
 
+def samp_comov_reject(n_samps, r_min, r_max):
+    '''Randomly samples n_samps distances between r_min and r_max such that comoving volumes are respected
+    '''
+    p_z = lambda z: z**2 / np.sqrt(OMEGA_M*(1+z)**3 + OMEGA_A)
+
+    #compute the corresponding minimum and maximum redshifts
+    z1 = H0_TRUE*r_min/C_L
+    z2 = H0_TRUE*r_max/C_L
+    max_p = p_z(z2)
+
+    #perform rejection sampling until we have enough points
+    rets = np.empty(n_samps)
+    n_filled = 0
+    while True:
+        z_pts = np.random.uniform(low=z1, high=z2, size=n_samps)
+        p_pts = np.random.uniform(low=0.0, high=max_p, size=n_samps)
+        for z, prob in zip(z_pts, p_pts):
+            #rejection method
+            if prob < p_z(z):
+                rets[n_filled] = z
+                n_filled += 1
+                #if we have enough points then return what we've generated
+                if n_filled == n_samps:
+                    return C_L*rets/H0_TRUE
+
 def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     '''Generate (part) of a galaxy cluster with an area parameterized by the solid angle of possible sky locations and an estimate on the luminosity distance d_l. The volume is taken by assuming that (d_l-d_l_err, d_l+d_l_err) describes some confidence interval for luminosity distance.
     '''
@@ -213,9 +240,10 @@ def gen_clusters(solid_angle, d_l, d_l_err):
             break
 
     #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
-    r_facts = np.random.uniform(0, 1.0, n_clusters)
+    '''r_facts = np.random.uniform(0, 1.0, n_clusters)
     vol_per_angle = (r_max**3 - r_min**3)
-    dist_clusts = np.cbrt(r_facts*vol_per_angle + r_min**3)
+    dist_clusts = np.cbrt(r_facts*vol_per_angle + r_min**3)'''
+    dist_clusts = samp_comov_reject(n_clusters, r_min, r_max)
     #generate central sky locations for each cluster
     clust_phis = np.random.uniform(-phi_r, phi_r, n_clusters)
     clust_thetas = np.random.uniform(-theta_r, theta_r, n_clusters)
