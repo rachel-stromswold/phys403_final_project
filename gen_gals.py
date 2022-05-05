@@ -63,11 +63,15 @@ parser.add_argument('--density', type=str, nargs='+', help='Density of galaxies 
 parser.add_argument('--n-events-generate', type=int, help='Number of galaxy catalogs to generate.', default=100)
 parser.add_argument('--volume-range', type=float, nargs='+', help='Simulated detections which have a localization volume outside of this range will not be considered for analysis.', default=(CONFINE_THRESHOLD_LO, CONFINE_THRESHOLD_HI))
 parser.add_argument('--out-directory', type=str, help='Location to save generated values to', default=DIR_NAME)
+parser.add_argument('--mode', type=str, default='cluster', help='If set to uniform, then generated galaxies will not belong to any particular clusters. The positions are thus statistically independent.')
 args = parser.parse_args()
 GAL_DENSITY = args.density
 CONFINE_THRESHOLD_LO, CONFINE_THRESHOLD_HI = args.volume_range
 N_EVENTS = args.n_events_generate
 DIR_NAME = args.out_directory
+use_unif = False
+if args.mode == 'uniform':
+    use_unif = True
 
 def sample_GW_events_uniform(dist_range, dist_er_scale, dist_er_sigma, skyloc_range, n_events):
     '''Samples from a uniform population of potential GW events.
@@ -167,7 +171,9 @@ def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     sqrt_omega = math.sqrt( soliddeg_to_solidrad(solid_angle) )
     theta_r = math.asin(sqrt_omega/4)
     phi_r = sqrt_omega
-    lmbda = GAL_DENSITY*get_GW_event_vol( soliddeg_to_solidrad(solid_angle), r_min, r_max )
+    #to make the two generation models as consistent as possible, we take the expectation value for the number of galaxies in a cluster times the cluster density as the density of galaxies. The number of galaxies follows a beta distribution so it has <n>=k\theta
+    gal_dense = CLUST_DENSITY*GAMMA_SHAPE_N*CRIT_GAL_N/(GAMMA_SHAPE_N-1)
+    lmbda = gal_dense*get_GW_event_vol( soliddeg_to_solidrad(solid_angle), r_min, r_max )
 
     #comoving velocity dispersion for this particular cluster. We want to make sure this is positive, although negative values have roughly 0.3% chance to occur
     vel_sigma = -1.0
@@ -179,9 +185,10 @@ def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     loc_arr = np.zeros(shape=(5, n_gals)) #colunms are (RA, DEC, z, z_err) respectively
 
     #we need to ensure that galaxies are uniformly sampled. Note that p(r) = 3r^2/(r_max^3 - r_min^3) so F^-1(F)=(F*(r_max^3-r_min^3))^(1/3)
-    r_facts = np.random.uniform(0, 1.0, n_gals)
+    '''r_facts = np.random.uniform(0, 1.0, n_gals)
     vol_per_angle = (r_max**3 - r_min**3)
-    r_gals = np.cbrt(r_facts*vol_per_angle + r_min**3)
+    r_gals = np.cbrt(r_facts*vol_per_angle + r_min**3)'''
+    dist_clusts = samp_comov_reject(n_gals, r_min, r_max)
 
     #generate the (radial components) of peculiar velocity for each galaxy
     pec_vels = np.random.normal(0.0, vel_sigma, n_gals)
@@ -326,10 +333,14 @@ def make_samples(n_events):
         dist_lo = dist - dist_err*2
         dist_hi = dist + dist_err*2
 
-        #TODO: uniformity on sky angle is almost certainly a highly unrealistic assumption
         solid_angle = ev[2]
 
-        locs = gen_clusters(solid_angle, dist, 2*dist_err)
+        #use the 2*sigma confidence interval
+        if use_unif:
+            locs = gen_cluster_uniform(solid_angle, dist, 2*dist_err)
+        else:
+            locs = gen_clusters(solid_angle, dist, 2*dist_err)
+
         print("saving cluster to " + rshift_fname)
         #write the list of potential galaxies and most importantly their redshifts (with random blinding factor) to a file
         with h5py.File(rshift_fname, 'w') as f:
