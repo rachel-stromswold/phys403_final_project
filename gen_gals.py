@@ -188,7 +188,7 @@ def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     '''r_facts = np.random.uniform(0, 1.0, n_gals)
     vol_per_angle = (r_max**3 - r_min**3)
     r_gals = np.cbrt(r_facts*vol_per_angle + r_min**3)'''
-    dist_clusts = samp_comov_reject(n_gals, r_min, r_max)
+    r_gals = samp_comov_reject(n_gals, r_min, r_max)
 
     #generate the (radial components) of peculiar velocity for each galaxy
     pec_vels = np.random.normal(0.0, vel_sigma, n_gals)
