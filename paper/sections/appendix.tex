@@ -14,21 +14,23 @@
 %It was necessary to rescale the sky location uncertainty by a factor of $1000$ to avoid numeric instabilities before producing tesselations. Training data and MCMC samples are shown in figure \ref{fig:MCMC}
 
 \section{\label{sec:clust_gen} Simulated galaxy catalogs}
-After producing a simulated event, we need to produce a catalog of galaxies within the credible interval of sky locations and radial distances obtained from the GW event sample. The volumes produced by typical events are very large, on the order of $1$ \si{Gpc^3}. Volumes this lage will exhibit large scale structures. To simplify our analysis we only consider clusters of galaxies and not larger structures such as superclusters or filaments.
+After producing a simulated event, we need to produce a catalog of galaxies within the credible interval of sky locations and radial distances obtained from the GW event sample. The volumes produced by typical events are very large, on the order of $1$ \si{Gpc^3}. Volumes this large will exhibit large scale structures. To simplify our analysis we only consider clusters of galaxies and not larger structures such as superclusters or filaments.
 
-To estimate the density of galaxy clusters we use a survey by S. Hansen et al. of a $395$ \si{deg^2} region of sky observed in the SDSS catalog \cite{Hansen_2005}. This analysis found 12830 clusters with redshifts in the range $0.07\leq z\leq 0.3$, for which this catalog is considered complete. Using a value of $H_0=70$ \si{km.s^{-1}.Mpc^{-1}}, we arrive at a very crude estimate of cluster density, $1.5\times 10^{-4}$ \si{Mpc^{-3}}.
+To estimate the density of galaxy clusters we use a survey by S. Hansen et al. of a $395$ \si{deg^2} region of sky observed in the SDSS catalog \cite{Hansen_2005}. This analysis found 12830 clusters with redshifts in the range $0.07\leq z\leq 0.3$, for which this catalog is considered complete. Using a value of $H_0=70$ \si{km.s^{-1}.Mpc^{-1}}, we arrive at a very crude estimate of cluster density of $1.5\times 10^{-4}$ \si{Mpc^{-3}}.
 
-Assuming that the mass of normal matter in a cluster follows the Press-Schechter function \cite{Press_1974} and that the number of galaxies is proportional to mass we can express the probability distribution that a cluster has $n$ galaxies,
+Assuming that the mass of normal matter in a cluster follows the Press-Schechter function \cite{Press_1974} and that the number of galaxies is proportional to mass we can express the probability distribution that a cluster has $n$ galaxies as
 
 \begin{equation}
-p(n | n_c, \alpha) \propto \left( \frac{n}{n_c} \right)^{\alpha}e^{n/n_c},
+p(n | n_c, \alpha) \propto \left( \frac{n}{n_c} \right)^{\alpha}e^{n/n_c}
 \end{equation}
-where $n_c$ and $\alpha$ are paramters that should be fitted to the data. Using the same survey mentioned previously we obtain estimates $\alpha = 7.695$ and $n_c = 3$. The authors also find that the characteristic radius for a galaxy cluster goes as $r_c ~ \mathcal{N}_gals^\beta$ for $\beta=0.56$ \cite{Hansen_2005}. We take the offset of any galaxy from the center of mass to follows a three-dimensional Gaussian distribution with $\sigma_r = r_c$. Under the assumption that the virial theorem is obeyed and that velocities follow a normal distribution, we can derive an expression for $\sigma_v$ in terms of $r_c$,
+where $n_c$ and $\alpha$ are paramters that should be fitted to the data. Using the SDSS catalog we obtain estimates $\alpha = 7.695$ and $n_c = 3$. The authors also find that the characteristic radius for a galaxy cluster goes as $r_c ~ \mathcal{N}_gals^\beta$ for $\beta=0.56$ \cite{Hansen_2005}. We take the offset of any galaxy from the center of mass to follows a three-dimensional Gaussian distribution with $\sigma_r = r_c$. Under the assumption that the virial theorem is obeyed and that velocities follow a normal distribution, we can derive an expression for $\sigma_v$ in terms of $r_c$:
 
+\begin{widetext}
 \begin{align}
-  \left<U\right> &= \frac{4\pi Gm}{\sqrt{2\pi r_c^2}} \int r e^{-r^2 / 2r_c^2} dr = \sqrt{8\pi m}r_c = 2\pi m\sigma_v^2 = \left<K\right> \nonumber\\
+    \left<U\right> &= \frac{4\pi Gm}{\sqrt{2\pi r_c^2}} \int r e^{ -r^2 / 2r_c^2} dr = \sqrt{8\pi m}r_c = 2\pi m\sigma_v^2 = \left<K\right> \nonumber\\
   &\implies \sigma_v^2 = \frac{G r_c}{\sqrt{\pi/2}}.
 \end{align}
+\end{widetext}
 
 This model for catalog generation makes a number of unrealistic assumptions. We have treated cluster densities as uniform within the range of interest, but we should expect this to have a redshift dependence. We have also ignored the role of dark matter which should constitute the majority of a cluster's mass. It may be interesting to account for these affects in future work, but the model presented here is sufficient for a toy model. However, this model does produce correlations between the peculiar motions of galaxies and their locations, which is a useful test of the robustness of our estimation of Hubble's constant.
 
@@ -39,3 +41,7 @@ To get a crude estimate of the width of this Gaussian displacement, we start by 
 \begin{equation}
   \sigma = \frac{1}{2}\left(\frac{3}{4\pi} V\right)^{1/3}.
 \end{equation}
+
+\section{\label{sec:code} Data and Code}
+
+The code for both galaxy cluster simulation and the calculation of the posterior distribution of $H_0$, as well as the data products for each of these, can be found at \url{https://github.com/REDACTED/phys_403_final_project}.

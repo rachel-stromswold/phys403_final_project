@@ -15,6 +15,7 @@ Based on the posterior distributions for these localizations, we use a method fo
 It has been predicted that these methods can confine the Hubble constant within the decade \cite{Chen_2018}.
 This technique was applied to the event GW170814 by collaborators from the LIGO and Virgo teams using results from the Dark Energy Survey of the southern sky \cite{GW170814_DES}.
 We carry out a similar analysis on simulated data sets based on historic gravitational wave (GW) data and simple physical assumptions for the distribution of galaxies within clusters.
+To show the validity of our analysis, we generate our simulated data sets using a specific value of $H_0$ and confirm that we can recover this value.
 
 %\section{Data} \label{sec:develop}
 
@@ -24,19 +25,19 @@ After obtaining these marginalized probability distributions, we use historic da
 
 In principle, one should consider the posterior distribution on sky location which has a finite probability to be found outside the credible interval. To simplify our analysis, we approximate this probability distribution as uniform within the localization volume and zero everywhere else. This treatment has precedent in existing studies \cite{Nair_2018, GW170814_DES}.
 
-After producing simulated GW events and their corresponding localization volumes, we need to select a suitable sky catalog. These data are also simulated by randomly sampling a number of galaxy clusters which are assumed not to interact with one another. The total mass of the cluster is assumed to follow a Press-Schechter mass distribution\cite{Press_1974}. Peculiar motions (which affect the measured redshift $z$) and distance from the center of mass are sampled such that the Virial theorem is obeyed, but other important factors like the very high concentrations of dark matter within clusters are neglected. More details on cluster generation are given in Appendix \ref{sec:clust_gen}.
+After producing simulated GW events and their corresponding localization volumes, we need to select a suitable sky catalog. These data are also simulated by randomly sampling a number of galaxy clusters which are assumed not to interact with one another. The total mass of the cluster is assumed to follow a Press-Schechter mass distribution \cite{Press_1974}. Peculiar motions (which affect the measured redshift $z$) and distance from the center of mass are sampled such that the virial theorem is obeyed, but other important factors like the very high concentrations of dark matter within clusters are neglected. More details on cluster generation are given in Appendix \ref{sec:clust_gen}.
     
 %\subsection{\label{Method} Methodology}
 
 We start with a simple application of Bayes' theorem,
 \begin{align}
     p(H_0|d_{GW}, d_C)&\propto p(d_{GW}, d_C|H_0)p(H_0)\nonumber\\
-    &= p(d_{GW}|H_0)p(d_C|H_0)p(H_0).
+    &= p(d_{GW}|H_0)p(d_C|H_0)p(H_0)
 \label{eq:bayes}
 \end{align}
 where $d_{GW}$ refers to the observed data from the gravitational wave detectors and $d_C$ refers to data from the known catalog of stars and their redshifts. We break this joint likelihood into a product of likelihoods since both experiments are statistically independent.
 
-Since we are considering dark sirens without electromagnetic counterparts, we do not know the host galaxy in which the merger occurred. Thus we must marginalize over all possible galaxies within the volume of possible locations supplied by the GW data. Since the number of galaxies is discrete, this is expressed as a sum:
+Since we are considering dark sirens without EM, we do not know the host galaxy in which the merger occurred. Thus we must marginalize over all possible galaxies within the volume of possible locations supplied by the GW data. Since the number of galaxies is discrete, this is expressed as a sum:
 
 \begin{align}
     p(&d_{GW}, d_C|{z_j, \hat{\Omega}_j},H_0)  \propto  \nonumber\\
@@ -46,7 +47,7 @@ Since we are considering dark sirens without electromagnetic counterparts, we do
     \label{eq:marginal_like}
 \end{align}.
 
-In principle, we should apply a weight to each galaxy $w_i$ we include this in the expression below, but for simplicity we take $w_i=1$ for all galaxies within the volume of interest and $w_i=0$ for all galaxies outside. This same approximation has been used in previous analyses \cite{Chen_2018,GW170814_DES,Nair_2018}. To evaluate this integral we switch to spherical coordinates and work in redshift space as opposed to distance space. This results in a change of coordinates
+In principle, we should apply a weight $w_i$ to each galaxy, but for simplicity we take $w_i=1$ for all galaxies within the volume of interest and $w_i=0$ for all galaxies outside. This same approximation has been used in previous analyses \cite{Chen_2018,GW170814_DES,Nair_2018}. To evaluate this integral we switch to spherical coordinates and work in redshift space as opposed to distance space. This results in a change of coordinates
 
 \begin{equation}
 dV \propto \frac{d^2 V}{d z_i d\hat{\Omega}_i} \frac{d z_i}{d r} d r d\hat{\Omega} \propto \frac{r^2(z_i)}{H(z_i)}
