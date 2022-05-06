@@ -21,7 +21,7 @@ To show the validity of our analysis, we generate our simulated data sets using 
 
 Historic data is taken from merger catalogs from the second and third year of LIGO observations \cite{GWTC_2,GWTC_3}. Our analysis is only interested in the solid angle covered by sky localization ($\Omega$), distances obtained from the GW data ($d_L$), and their uncertainties, $\sigma_d$. We thus marginalize over all other parameters to obtain a three dimensional probability distribution containing only these parameters of interest. It vastly simplifies our analysis if we assume that the uncertainties on $d_L$ are Gaussian. However, posterior distributions from the LIGO papers contain differing upper and lower credible limits. To compensate, we take the half width on these posteriors as our Gaussian uncertainties.
 
-After obtaining these marginalized probability distributions, we use historic data as a training set for Gaussian kernel density estimation. We then use the kernel estimation to sample simulated events which have the same underlying probability distribution as observations. The returned samples have a finite probability to be from unphysical regions, i.e. $d_L \leq 0$, $\Omega\leq 0$ or $\sigma_d > d_L$. To counteract this, we reject all samples which are outside of the extremal historic values (e.g. if a sample is closer than the closest observed detection we reject it). or violate the $\sigma_d \leq d_L$ constraint. Many of the sampled events will have very large localization regions, which makes it inconvenient to use them for estimates of $H_0$. Since our goal is to produce an estimate of how many observations are required to produce estimates of $H_0$ we only perform further analysis on events that were well localized.
+After obtaining these marginalized probability distributions, we use historic data as a training set for Gaussian kernel density estimation. We then use the kernel estimation to sample simulated events which have the same underlying probability distribution as observations. The returned samples have a finite probability to be from unphysical regions, i.e. $d_L \leq 0$, $\Omega\leq 0$ or $\sigma_d > d_L$. To counteract this, we reject all samples that are outside of the extremal historic values (e.g. if a sample is closer than the closest observed detection we reject it), or that violate the $\sigma_d \leq d_L$ constraint. Many of the sampled events will have very large localization regions, which makes it inconvenient to use them for estimates of $H_0$. Since our goal is to produce an estimate of how many observations are required to produce estimates of $H_0$ we only perform further analysis on events that were well localized.
 
 In principle, one should consider the posterior distribution on sky location which has a finite probability to be found outside the credible interval. To simplify our analysis, we approximate this probability distribution as uniform within the localization volume and zero everywhere else. This treatment has precedent in existing studies \cite{Nair_2018, GW170814_DES}.
 
@@ -32,12 +32,12 @@ After producing simulated GW events and their corresponding localization volumes
 We start with a simple application of Bayes' theorem,
 \begin{align}
     p(H_0|d_{GW}, d_C)&\propto p(d_{GW}, d_C|H_0)p(H_0)\nonumber\\
-    &= p(d_{GW}|H_0)p(d_C|H_0)p(H_0)
+    &= p(d_{GW}|H_0)p(d_C|H_0)p(H_0),
 \label{eq:bayes}
 \end{align}
 where $d_{GW}$ refers to the observed data from the gravitational wave detectors and $d_C$ refers to data from the known catalog of stars and their redshifts. We break this joint likelihood into a product of likelihoods since both experiments are statistically independent.
 
-Since we are considering dark sirens without EM, we do not know the host galaxy in which the merger occurred. Thus we must marginalize over all possible galaxies within the volume of possible locations supplied by the GW data. Since the number of galaxies is discrete, this is expressed as a sum:
+Since we are considering dark sirens without EM counterparts, we do not know the host galaxy in which the merger occurred. Thus we must marginalize over all galaxies within the volume of possible locations supplied by the GW data. Since the number of galaxies is discrete, this is expressed as a sum:
 
 \begin{align}
     p(&d_{GW}, d_C|{z_j, \hat{\Omega}_j},H_0)  \propto  \nonumber\\
@@ -45,7 +45,7 @@ Since we are considering dark sirens without EM, we do not know the host galaxy 
     p(d_C|{z_, \hat{\Omega}_j}) \nonumber\\
     & \delta_D (d_L - d_L(z_i, H_0)) \delta_D (\hat{\Omega}_{GW} - \hat{\Omega}_i).
     \label{eq:marginal_like}
-\end{align}.
+\end{align}
 
 In principle, we should apply a weight $w_i$ to each galaxy, but for simplicity we take $w_i=1$ for all galaxies within the volume of interest and $w_i=0$ for all galaxies outside. This same approximation has been used in previous analyses \cite{Chen_2018,GW170814_DES,Nair_2018}. To evaluate this integral we switch to spherical coordinates and work in redshift space as opposed to distance space. This results in a change of coordinates
 
@@ -55,7 +55,7 @@ dV \propto \frac{d^2 V}{d z_i d\hat{\Omega}_i} \frac{d z_i}{d r} d r d\hat{\Omeg
 where $H(z_i)$ is the Hubble parameter in redshift space,
 
 \begin{equation}
-H(z_i) = H_0^3 \left(\Omega_m (1+z)^3 + \Omega_\Lambda\right)
+H(z_i) = H_0^3 \left(\Omega_m (1+z)^3 + \Omega_\Lambda\right),
 \end{equation}
 where we have assumed a flat universe. We will take $\Omega_m = 0.3$ and $\Omega_\Lambda = 0.7$ in keeping with Soares-Santos et al \cite{GW170814_DES}. We expect our catalog of galaxies to have very low uncertainty on sky location, so we take $p(d_C|z_i,\Omega)=p(d_C|z_i)\delta(\Omega - \Omega_i)$. Finally we can write the posterior distribution for $H_0$:
 
