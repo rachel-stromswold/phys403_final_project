@@ -74,7 +74,10 @@ def average_instances(file_list, label):
             ax2.axvline(mus[i][-1] + stds[i][-1], linestyle="--", color="black", linewidth=1.)
             ax2.axvline(H0_INJECTED, color="blue")
             plt.tight_layout()
-            plt.savefig(args.output_prefix + "posterior_{}_{}.pdf".format(label.replace(" ", "_"), i))
+            out_name = "posterior_{}.pdf".format(i)
+            if label is not None:
+                out_name = "posterior_{}_{}.pdf".format(label.replace(" ", "_"), i)
+            plt.savefig(args.output_prefix + out_name)
             plt.clf()
 
     if min_n_its == 0:
@@ -122,6 +125,7 @@ mu_post, std_post, mu_std_post, std_std_post, min_n_its_post = average_instances
 if (args.compare_files is not None) and (len(args.compare_files) > 0):
     mu_comp, std_comp, mu_std_comp, std_std_comp, min_n_its_comp = average_instances(args.compare_files, args.compare_label)
 
+#plot the standard deviations
 plt.figure(figsize=(8, 5))
 plt.plot(std_post, color="red", label=args.posterior_label)
 plt.fill_between([i for i in range(min_n_its_post)], std_post-std_std_post, std_post+std_std_post, color=LC1, alpha=ALPH)
@@ -131,9 +135,12 @@ if (args.compare_files is not None) and (len(args.compare_files) > 0):
 plt.xlabel("Number of events", fontsize=14)
 plt.ylabel("$\sigma_{H_0}$ [km s$^{-1}$ Mpc$^{-1}$]", fontsize=14)
 plt.ylim(0., 35.)
-plt.legend()
+#only add the legend if labels have been provided
+if (args.posterior_label is not None) and (args.compare_label is not None):
+    plt.legend()
 plt.savefig(args.output_prefix + "std.pdf")
 
+#plot the biases
 plt.figure(figsize=(8, 5))
 plt.plot(mu_post - H0_INJECTED, color=LC1, label=args.posterior_label)
 plt.fill_between([i for i in range(min_n_its_post)], mu_post-H0_INJECTED-mu_std_post, mu_post-H0_INJECTED+mu_std_post, color=LC1, alpha=ALPH)
@@ -142,14 +149,19 @@ if (args.compare_files is not None) and (len(args.compare_files) > 0):
     plt.fill_between([i for i in range(min_n_its_comp)], mu_comp-H0_INJECTED-mu_std_comp, mu_comp-H0_INJECTED+mu_std_comp, color=LC2, alpha=ALPH)
 plt.xlabel("Number of events", fontsize=14)
 plt.ylabel("$\langle H_0 \\rangle - H_{0,{\\rm true}}$ [km s$^{-1}$ Mpc$^{-1}$]", fontsize=14)
-plt.legend()
+#only add the legend if labels have been provided
+if (args.posterior_label is not None) and (args.compare_label is not None):
+    plt.legend()
 plt.savefig(args.output_prefix + "diff.pdf")
 
+#plot the correlations between standard deviation and expectation value
 plt.figure(figsize=(5, 5))
 plt.scatter(mu_post, std_post, s=4., color=LC1, label=args.posterior_label)
 if (args.compare_files is not None) and (len(args.compare_files) > 0):
     plt.scatter(mu_comp, std_comp, s=4., color=LC2, label=args.compare_label)
 plt.xlabel("$\langle H_0 \\rangle$ [km s$^{-1}$ Mpc$^{-1}$]", fontsize=14)
 plt.ylabel("$\sigma_{H_0}$ [km s$^{-1}$ Mpc$^{-1}$]", fontsize=14)
-plt.legend()
+#only add the legend if labels have been provided
+if (args.posterior_label is not None) and (args.compare_label is not None):
+    plt.legend()
 plt.savefig(args.output_prefix + "correlation.pdf")
