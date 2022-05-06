@@ -23,5 +23,5 @@ for md in "${modes[@]}"; do
             plt_cmd="$plt_cmd $folder/plot_data/posterior_${md}_$i.txt"
 	done
         echo "python gen_plots.py $plt_cmd"
-        python gen_plots.py $plt_cmd
+        python gen_plots.py $plt_cmd >> "$folder/out.log"
 done

@@ -23,14 +23,15 @@ Assuming that the mass of normal matter in a cluster follows the Press-Schechter
 \begin{equation}
 p(n | n_c, \alpha) \propto \left( \frac{n}{n_c} \right)^{\alpha}e^{n/n_c}
 \end{equation}
-where $n_c$ and $\alpha$ are paramters that should be fitted to the data. Using the SDSS catalog we obtain estimates $\alpha = 7.695$ and $n_c = 3$. The authors also find that the characteristic radius for a galaxy cluster goes as $r_c ~ \mathcal{N}_gals^\beta$ for $\beta=0.56$ \cite{Hansen_2005}. We take the offset of any galaxy from the center of mass to follows a three-dimensional Gaussian distribution with $\sigma_r = r_c$. Under the assumption that the virial theorem is obeyed and that velocities follow a normal distribution, we can derive an expression for $\sigma_v$ in terms of $r_c$:
+where $n_c$ and $\alpha$ are paramters that should be fitted to the data. Using the SDSS catalog we obtain estimates $\alpha = 7.695$ and $n_c = 3$. The authors also find that the characteristic radius for a galaxy cluster goes as $r_c ~ \mathcal{N}_{gals}^\beta$ for $\beta=0.56$ \cite{Hansen_2005}. We take the offset of any galaxy from the center of mass to follows a three-dimensional Gaussian distribution with $\sigma_r = r_c$. Under the assumption that the virial theorem is obeyed and that velocities follow a normal distribution, we can derive an expression for $\sigma_v$ in terms of $r_c$:
 
 \begin{widetext}
 \begin{align}
-    \left<U\right> &= \frac{4\pi Gm}{\sqrt{2\pi r_c^2}} \int r e^{ -r^2 / 2r_c^2} dr = \sqrt{8\pi m}r_c = 2\pi m\sigma_v^2 = \left<K\right> \nonumber\\
-  &\implies \sigma_v^2 = \frac{G r_c}{\sqrt{\pi/2}}.
+    \left<U\right> &= \frac{4\pi G\mu}{\sqrt{2\pi r_c^2}} \int r e^{ -r^2 / 2r_c^2} dr = \sqrt{8\pi m}r_c = 2\pi m\sigma_v^2 = \left<K\right> \nonumber\\
+    &\implies \sigma_v^2 = \frac{G r_c}{\sqrt{\pi/2}}\frac{\mu}{m}.
 \end{align}
 \end{widetext}
+Here we have taken $\mu$ to be the reduced mass of the galaxy and the center of gravity of the cluster. It is well known that galaxy clusters tend to be dominated by dark matter \cite{Clowe_2006, Hoh_2020}. Therefore, in all of our numerical work we use the approximation $\mu / m = 1$.
 
 This model for catalog generation makes a number of unrealistic assumptions. We have treated cluster densities as uniform within the range of interest, but we should expect this to have a redshift dependence. We have also ignored the role of dark matter which should constitute the majority of a cluster's mass. It may be interesting to account for these affects in future work, but the model presented here is sufficient for a toy model. However, this model does produce correlations between the peculiar motions of galaxies and their locations, which is a useful test of the robustness of our estimation of Hubble's constant.
 
