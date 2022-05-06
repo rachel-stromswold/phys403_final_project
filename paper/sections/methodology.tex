@@ -1,20 +1,20 @@
 \section{\label{sec:methods} Methods}
 
 
-Binary black hole mergers are often called ``dark sirens'' due to their lack observable EM counterparts.
-Though the detection of an EM counterpart can facilitate the determination of host galaxy and therefore result in a well-constrained measurement of $H_0$ \cite{GW170817_H0}, such detections are rare: at time of writing, GW170817 is the only neutron start merger detection with an identified EM counterpart \cite{GW170817_announce}.
+Binary black hole mergers are often called ``dark sirens'' due to their lack observable electromagnetic (EM) counterparts.
+Though the detection of an EM counterpart can facilitate the determination of the host galaxy and therefore result in a well-constrained measurement of $H_0$ \cite{GW170817_H0}, such detections are rare: at time of writing, GW170817 is the only neutron star merger detection with an identified EM counterpart \cite{GW170817_announce}.
 
 As early as 1986 it was proposed that an array of multiple gravitational wave detectors could be used to estimate the distance to an event $d_L$ and bounds on sky location \cite{Schutz_1986}.
 Gravitational waves originating from a binary black hole system during the inspiral phase of the merger can be used as dark sirens due to the fact that the individual black hole masses can be determined from the gravitational wave frequency.
-The power radiating from the binary system is due to its orbital energy, and therefore the power radiating from the source can be determined purely from the gravitational wave frequency, without any knowledge of the luminosity distance.
+The power radiating from the binary system is due to its orbital energy, and therefore the power radiating from the source can be determined purely from the gravitational wave frequency without any knowledge of the luminosity distance.
 The power detected is related to this emitted power through an inverse square law, and so the luminosity distance can be determined without the need for a cosmic distance ladder.
 Gravitational waves therefore present a completely independent method by which we can determine distances to galaxies, provided we can determine the host galaxy for a given merger \cite{GW170814_DES,GW170817_H0,Nair_2018}.
 
 Since we can estimate the sky location from which the signal was emitted along with the distance to the event, these estimates can then be used to produce a catalog of candidate host galaxies from existing sky surveys.
-Based on the posterior distributions for these localizations, we use a method for measuring $H_0$ layed out by Nair et al. \cite{Nair_2018}.
+Based on the posterior distributions for these localizations, we use a method for measuring $H_0$ laid out by Nair et al. \cite{Nair_2018}.
 It has been predicted that these methods can confine the Hubble constant within the decade \cite{Chen_2018}.
 This technique was applied to the event GW170814 by collaborators from the LIGO and Virgo teams using results from the Dark Energy Survey of the southern sky \cite{GW170814_DES}.
-We carry out a similar analysis on simulated data sets based on historic GW data and simple physical assumptions for the distribution of galaxies within clusters.
+We carry out a similar analysis on simulated data sets based on historic gravitational wave (GW) data and simple physical assumptions for the distribution of galaxies within clusters.
 
 %\section{Data} \label{sec:develop}
 
@@ -56,14 +56,14 @@ where $H(z_i)$ is the Hubble parameter in redshift space,
 \begin{equation}
 H(z_i) = H_0^3 \left(\Omega_m (1+z)^3 + \Omega_\Lambda\right)
 \end{equation}
-where we have assumed a flat universe so $\Omega_k = 0$. We will take $\Omega_m = 0.3$ and $\Omega_\Lambda = 0.7$ in keeping with Soares-Santos et al \cite{GW170814_DES}. We expect our catalog of galaxies to have very low uncertainty on sky location, so we take $p(d_C|z_i,\Omega)=p(d_C|z_i)\delta(\Omega - \Omega_i)$. Finally we can write the posterior distribution for $H_0$:
+where we have assumed a flat universe. We will take $\Omega_m = 0.3$ and $\Omega_\Lambda = 0.7$ in keeping with Soares-Santos et al \cite{GW170814_DES}. We expect our catalog of galaxies to have very low uncertainty on sky location, so we take $p(d_C|z_i,\Omega)=p(d_C|z_i)\delta(\Omega - \Omega_i)$. Finally we can write the posterior distribution for $H_0$:
 
 \begin{align}
      p&(H_0|d_{GW}, d_C)\propto p(H_0) \sum_i \frac{1}{Z_i} \nonumber\\
      &\times \int dz_i p\left(d_{GW}|d_L(z_i, H_0), \hat{\Omega_{i}}\right)p(d_C|z_i)\frac{r^2 (z_i)}{H(z_i)}
     \label{eq: finaleq}
 \end{align}
-where $d_L(z_i, H_0) = cz_i / H_0$ uses Hubble's law to express luminosity distance in terms of redshift and an assumed value for $H_0$. We assume that the errors on redshifts are Gaussian, in keeping with the analysis by Singer et al. \cite{Singer_2016}. Under this assumption,
+where $d_L(z_i, H_0) = cz_i / H_0$ uses Hubble's law to express luminosity distance in terms of redshift and an assumed value for $H_0$. In keeping with Singer et al., we assume that the errors on redshifts are Gaussian \cite{Singer_2016}. Under this assumption,
 
 \begin{align}
     p&\left(d_{GW}|d_L(z_i, H_0)\right)\propto \nonumber\\
