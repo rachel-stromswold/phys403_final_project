@@ -31,6 +31,7 @@ C_L = float(config['physical']['light_speed'])
 G = float(config['physical']['grav_const'])
 CLUST_DENSITY = float(config['physical']['cluster_density'])
 GAL_DENSITY = float(config['physical']['galaxy_density'])
+GAMMA_SHAPE_N = float(config['physical']['n_alpha'])
 CRIT_GAL_N = float(config['physical']['crit_n_gal'])
 CLUST_MASS_LAMBDA_0 = float(config['physical']['mass_lambda_0'])
 CLUST_MASS_SCALE = float(config['physical']['mass_scale_rich'])
@@ -38,7 +39,6 @@ CLUST_MASS_ALPHA = float(config['physical']['mass_alpha'])
 CLUST_MASS_VAR = float(config['physical']['mass_gauss_err'])
 OMEGA_M = float(config['physical']['omega_matter'])
 OMEGA_A = float(config['physical']['omega_lambda'])
-GAMMA_SHAPE_N = float(config['physical']['n_alpha'])
 R_200_SCALE = float(config['physical']['scale_const'])
 R_SCALE_POW = float(config['physical']['scale_pow'])
 GW_LOC_RANGE = [float(val) for val in config['simulation']['GW_dist_range'].split(sep=',')]
@@ -172,8 +172,9 @@ def gen_cluster_uniform(solid_angle, d_l, d_l_err):
     theta_r = math.asin(sqrt_omega/4)
     phi_r = sqrt_omega
     #to make the two generation models as consistent as possible, we take the expectation value for the number of galaxies in a cluster times the cluster density as the density of galaxies. The number of galaxies follows a beta distribution so it has <n>=k\theta
-    gal_dense = CLUST_DENSITY*GAMMA_SHAPE_N*CRIT_GAL_N/(GAMMA_SHAPE_N-1)
+    gal_dense = CLUST_DENSITY*GAMMA_SHAPE_N*CRIT_GAL_N/(GAMMA_SHAPE_N-1)/10
     lmbda = gal_dense*get_GW_event_vol( soliddeg_to_solidrad(solid_angle), r_min, r_max )
+    print( "dense={} lmbda={}".format(gal_dense, lmbda) )
 
     #comoving velocity dispersion for this particular cluster. We want to make sure this is positive, although negative values have roughly 0.3% chance to occur
     vel_sigma = -1.0
